@@ -1,0 +1,1457 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>零用金記錄表</title>
+<style>
+/* ── 設計 token（淺色為預設，深色在下方兩個 scope 各覆寫一次） ───────── */
+:root {
+  color-scheme: light;
+  --surface-1: #fcfcfb;
+  --plane: #f9f9f7;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11,11,11,0.10);
+  --field: #ffffff;
+  --hover: rgba(11,11,11,0.045);
+  --shadow: 0 1px 2px rgba(11,11,11,0.05);
+  --success-text: #006300;
+  --critical: #d03b3b;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --accent: #2a78d6;
+  --accent-ink: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --surface-1: #1a1a19;
+    --plane: #0d0d0d;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255,255,255,0.10);
+    --field: #232322;
+    --hover: rgba(255,255,255,0.06);
+    --shadow: none;
+    --success-text: #0ca30c;
+    --critical: #e66767;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-6: #008300;
+    --accent: #3987e5;
+    --accent-ink: #0d0d0d;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-1: #1a1a19;
+  --plane: #0d0d0d;
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --border: rgba(255,255,255,0.10);
+  --field: #232322;
+  --hover: rgba(255,255,255,0.06);
+  --shadow: none;
+  --success-text: #0ca30c;
+  --critical: #e66767;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --accent: #3987e5;
+  --accent-ink: #0d0d0d;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--plane);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans TC", "PingFang TC",
+               "Microsoft JhengHei", sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { margin: 0; font-weight: 600; }
+button { font: inherit; color: inherit; }
+
+/* ── 版面 ───────────────────────────────────────────────────────────── */
+.topbar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 20px;
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 40;
+}
+.topbar h1 { font-size: 17px; letter-spacing: -0.01em; }
+.topbar .spacer { flex: 1; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 20px 20px 64px; }
+section { margin-bottom: 20px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px;
+}
+.section-head h2 { font-size: 13px; letter-spacing: 0.04em; color: var(--text-secondary); text-transform: none; }
+.section-head .hint { font-size: 12px; color: var(--text-muted); }
+
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+.card-head {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 12px 14px 0;
+}
+.card-head h3 { font-size: 13px; color: var(--text-secondary); }
+.card-head .spacer { flex: 1; }
+.card-body { padding: 8px 14px 14px; }
+
+/* ── 控制項 ─────────────────────────────────────────────────────────── */
+label.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+label.field > span { font-size: 12px; color: var(--text-muted); }
+input, select, textarea {
+  font: inherit; color: var(--text-primary);
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 7px 9px;
+  min-width: 0; width: 100%;
+}
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 1px;
+}
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--field); border: 1px solid var(--border);
+  border-radius: 7px; padding: 7px 11px; cursor: pointer; white-space: nowrap;
+}
+.btn:hover { background: var(--hover); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.07); }
+.btn.ghost { background: transparent; }
+.btn.small { padding: 4px 8px; font-size: 12px; border-radius: 6px; }
+.btn.danger:hover { color: var(--critical); border-color: var(--critical); }
+.btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+
+/* ── 輸入表單 ───────────────────────────────────────────────────────── */
+.entry-grid {
+  display: grid; gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+.entry-actions { display: flex; gap: 8px; align-items: flex-end; }
+.type-toggle { display: flex; gap: 0; }
+.type-toggle button {
+  flex: 1; padding: 7px 8px; cursor: pointer; background: var(--field);
+  border: 1px solid var(--border);
+}
+.type-toggle button:first-child { border-radius: 7px 0 0 7px; }
+.type-toggle button:last-child { border-radius: 0 7px 7px 0; border-left: none; }
+.type-toggle button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
+.editing-note {
+  display: none; align-items: center; gap: 8px; margin-top: 10px;
+  font-size: 12px; color: var(--text-secondary);
+}
+.editing .editing-note { display: flex; }
+
+/* ── 篩選列 ─────────────────────────────────────────────────────────── */
+.filters { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); align-items: end; }
+.quick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+
+/* ── 統計卡 ─────────────────────────────────────────────────────────── */
+.stats { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.stat { padding: 14px; }
+.stat .k { font-size: 12px; color: var(--text-muted); }
+.stat .v { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; margin-top: 2px; }
+.stat.hero .v { font-size: 32px; }
+.stat .sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.pos { color: var(--success-text); }
+.neg { color: var(--critical); }
+
+/* ── 圖表 ───────────────────────────────────────────────────────────── */
+.charts { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); }
+.chart-host { width: 100%; }
+.chart-host svg { display: block; width: 100%; height: auto; overflow: visible; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; }
+.legend .item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
+.legend .swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.empty { padding: 28px 4px; text-align: center; color: var(--text-muted); font-size: 13px; }
+
+/* ── 表格 ───────────────────────────────────────────────────────────── */
+.table-scroll { overflow-x: auto; }
+#records-scroll { max-height: 62vh; overflow-y: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th {
+  font-weight: 600; color: var(--text-secondary); font-size: 12px;
+  position: sticky; top: 0; background: var(--surface-1); z-index: 1;
+}
+th.sortable { cursor: pointer; user-select: none; }
+th.sortable:hover { color: var(--text-primary); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+tbody tr:hover { background: var(--hover); }
+.tag {
+  display: inline-block; padding: 1px 7px; border-radius: 20px;
+  font-size: 11px; border: 1px solid var(--border); color: var(--text-secondary);
+}
+.mini-table th, .mini-table td { padding: 6px 8px; }
+
+/* ── 設定抽屜 ───────────────────────────────────────────────────────── */
+.drawer-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+  display: none; z-index: 50;
+}
+.drawer-backdrop.open { display: block; }
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(480px, 100%);
+  background: var(--surface-1); border-left: 1px solid var(--border);
+  transform: translateX(100%); transition: transform .18s ease;
+  z-index: 51; display: flex; flex-direction: column;
+}
+.drawer.open { transform: none; }
+@media (prefers-reduced-motion: reduce) { .drawer { transition: none; } }
+.drawer-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px; border-bottom: 1px solid var(--border);
+}
+.drawer-body { overflow-y: auto; padding: 16px; flex: 1; }
+.list-editor { margin-bottom: 22px; }
+.list-editor h3 { font-size: 13px; margin-bottom: 8px; }
+.list-editor .row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+.list-editor .row input { flex: 1; }
+.list-editor .add { display: flex; gap: 6px; margin-top: 8px; }
+.list-editor .count { font-size: 11px; color: var(--text-muted); margin-left: 6px; font-weight: 400; }
+.danger-zone { border-top: 1px solid var(--border); padding-top: 16px; }
+
+/* ── 提示氣泡 ───────────────────────────────────────────────────────── */
+#tip {
+  position: fixed; z-index: 60; pointer-events: none; opacity: 0;
+  background: var(--surface-1); color: var(--text-primary);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 10px; font-size: 12px; line-height: 1.45;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18); max-width: 240px;
+  transition: opacity .08s linear;
+}
+#tip.show { opacity: 1; }
+#tip .t-title { font-weight: 600; margin-bottom: 3px; }
+#tip .t-row { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+#tip .t-row .swatch { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+#tip .t-row .v { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+@media (max-width: 560px) {
+  .wrap { padding: 14px 12px 48px; }
+  .stat .v { font-size: 20px; }
+  .stat.hero .v { font-size: 26px; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <h1>零用金記錄表</h1>
+  <div class="spacer"></div>
+  <button class="btn small" id="btn-theme" title="切換淺色／深色">🌓 主題</button>
+  <button class="btn small" id="btn-settings">⚙️ 設定選單</button>
+</header>
+
+<div class="wrap">
+
+  <!-- 新增／編輯記錄 -->
+  <section id="entry-section">
+    <div class="card">
+      <div class="card-head"><h3 id="entry-title">新增記錄</h3></div>
+      <div class="card-body">
+        <form id="entry-form" autocomplete="off">
+          <div class="entry-grid">
+            <label class="field">
+              <span>日期</span>
+              <input type="date" id="f-date" required>
+            </label>
+            <label class="field">
+              <span>類型</span>
+              <span class="type-toggle" role="group" aria-label="類型">
+                <button type="button" id="t-expense" aria-pressed="true">支出</button>
+                <button type="button" id="t-income" aria-pressed="false">收入</button>
+              </span>
+            </label>
+            <label class="field">
+              <span>類別</span>
+              <select id="f-category" required></select>
+            </label>
+            <label class="field">
+              <span>項目名稱</span>
+              <input type="text" id="f-name" placeholder="例：影印紙 A4" required>
+            </label>
+            <label class="field">
+              <span>記錄人</span>
+              <select id="f-person" required></select>
+            </label>
+            <label class="field">
+              <span>金額</span>
+              <input type="number" id="f-amount" min="0" step="0.01" placeholder="0" required>
+            </label>
+            <label class="field">
+              <span>付款方式</span>
+              <select id="f-payment" required></select>
+            </label>
+            <label class="field">
+              <span>備註（選填）</span>
+              <input type="text" id="f-note" placeholder="">
+            </label>
+            <div class="entry-actions">
+              <button class="btn primary" type="submit" id="btn-save" style="flex:1">新增</button>
+            </div>
+          </div>
+          <div class="editing-note">
+            <span id="edit-hint"></span>
+            <button type="button" class="btn small ghost" id="btn-cancel-edit">取消編輯</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- 篩選（範圍涵蓋以下所有統計、圖表與明細） -->
+  <section>
+    <div class="section-head">
+      <h2>篩選</h2>
+      <span class="hint">以下統計、圖表、明細都會依此篩選</span>
+    </div>
+    <div class="card"><div class="card-body">
+      <div class="filters">
+        <label class="field"><span>起始日期</span><input type="date" id="q-from"></label>
+        <label class="field"><span>結束日期</span><input type="date" id="q-to"></label>
+        <label class="field"><span>類型</span><select id="q-type"></select></label>
+        <label class="field"><span>類別</span><select id="q-category"></select></label>
+        <label class="field"><span>記錄人</span><select id="q-person"></select></label>
+        <label class="field"><span>付款方式</span><select id="q-payment"></select></label>
+        <label class="field"><span>關鍵字</span><input type="search" id="q-text" placeholder="項目／備註"></label>
+      </div>
+      <div class="quick">
+        <button class="btn small" data-range="this-month">本月</button>
+        <button class="btn small" data-range="last-month">上月</button>
+        <button class="btn small" data-range="90">近 90 天</button>
+        <button class="btn small" data-range="this-year">今年</button>
+        <button class="btn small" data-range="all">全部</button>
+        <button class="btn small ghost" id="btn-reset-filter">清除篩選</button>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- 統計 -->
+  <section class="stats" id="stats"></section>
+
+  <!-- 圖表 -->
+  <section class="charts" id="charts">
+    <div class="card" data-chart="monthly">
+      <div class="card-head">
+        <h3>每月收支與結餘</h3><div class="spacer"></div>
+        <button class="btn small view-toggle" data-view="chart" aria-pressed="true">圖表</button>
+        <button class="btn small view-toggle" data-view="table" aria-pressed="false">表格</button>
+      </div>
+      <div class="card-body"><div class="chart-host"></div></div>
+    </div>
+    <div class="card" data-chart="category">
+      <div class="card-head">
+        <h3>支出類別佔比</h3><div class="spacer"></div>
+        <button class="btn small view-toggle" data-view="chart" aria-pressed="true">圖表</button>
+        <button class="btn small view-toggle" data-view="table" aria-pressed="false">表格</button>
+      </div>
+      <div class="card-body"><div class="chart-host"></div></div>
+    </div>
+    <div class="card" data-chart="person">
+      <div class="card-head">
+        <h3>各記錄人支出</h3><div class="spacer"></div>
+        <button class="btn small view-toggle" data-view="chart" aria-pressed="true">圖表</button>
+        <button class="btn small view-toggle" data-view="table" aria-pressed="false">表格</button>
+      </div>
+      <div class="card-body"><div class="chart-host"></div></div>
+    </div>
+    <div class="card" data-chart="payment">
+      <div class="card-head">
+        <h3>各付款方式支出</h3><div class="spacer"></div>
+        <button class="btn small view-toggle" data-view="chart" aria-pressed="true">圖表</button>
+        <button class="btn small view-toggle" data-view="table" aria-pressed="false">表格</button>
+      </div>
+      <div class="card-body"><div class="chart-host"></div></div>
+    </div>
+  </section>
+
+  <!-- 明細 -->
+  <section>
+    <div class="card">
+      <div class="card-head">
+        <h3>明細</h3>
+        <span class="hint" id="record-count"></span>
+        <div class="spacer"></div>
+        <button class="btn small" id="btn-export-csv">匯出 CSV</button>
+        <button class="btn small" id="btn-import-csv">匯入 CSV</button>
+      </div>
+      <div class="card-body">
+        <div class="table-scroll" id="records-scroll">
+          <table id="records">
+            <thead>
+              <tr>
+                <th class="sortable" data-sort="date">日期</th>
+                <th class="sortable" data-sort="type">類型</th>
+                <th class="sortable" data-sort="category">類別</th>
+                <th class="sortable" data-sort="name">項目名稱</th>
+                <th class="sortable" data-sort="person">記錄人</th>
+                <th class="sortable num" data-sort="amount">金額</th>
+                <th class="sortable" data-sort="payment">付款方式</th>
+                <th>備註</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="empty" id="records-empty" hidden>還沒有符合條件的記錄。</div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- 設定抽屜：下拉選單維護 -->
+<div class="drawer-backdrop" id="drawer-backdrop"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-label="設定">
+  <div class="drawer-head">
+    <h2 style="font-size:15px">設定</h2>
+    <div class="spacer" style="flex:1"></div>
+    <button class="btn small" id="btn-close-drawer">關閉</button>
+  </div>
+  <div class="drawer-body">
+    <div class="list-editor" style="margin-bottom:26px">
+      <h3>期初零用金</h3>
+      <div class="row">
+        <input type="number" id="s-opening" step="0.01" placeholder="0">
+        <span style="font-size:12px;color:var(--text-muted);white-space:nowrap">元</span>
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:4px">
+        目前餘額 = 期初零用金 + 全部收入 − 全部支出
+      </div>
+    </div>
+
+    <div class="list-editor" data-list="expenseCategories">
+      <h3>支出類別 <span class="count"></span></h3>
+      <div class="rows"></div>
+      <div class="add">
+        <input type="text" placeholder="新增支出類別">
+        <button class="btn small" type="button">新增</button>
+      </div>
+    </div>
+
+    <div class="list-editor" data-list="incomeCategories">
+      <h3>收入類別 <span class="count"></span></h3>
+      <div class="rows"></div>
+      <div class="add">
+        <input type="text" placeholder="新增收入類別">
+        <button class="btn small" type="button">新增</button>
+      </div>
+    </div>
+
+    <div class="list-editor" data-list="people">
+      <h3>記錄人 <span class="count"></span></h3>
+      <div class="rows"></div>
+      <div class="add">
+        <input type="text" placeholder="新增記錄人">
+        <button class="btn small" type="button">新增</button>
+      </div>
+    </div>
+
+    <div class="list-editor" data-list="payments">
+      <h3>付款方式 <span class="count"></span></h3>
+      <div class="rows"></div>
+      <div class="add">
+        <input type="text" placeholder="新增付款方式">
+        <button class="btn small" type="button">新增</button>
+      </div>
+    </div>
+
+    <div class="danger-zone">
+      <h3 style="font-size:13px;margin-bottom:8px">資料備份</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn small" id="btn-export-json">匯出備份 JSON</button>
+        <button class="btn small" id="btn-import-json">還原備份 JSON</button>
+        <button class="btn small danger" id="btn-clear">清空所有記錄</button>
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:8px">
+        資料只存在這台裝置的瀏覽器（localStorage），換裝置或清除瀏覽器資料前請先匯出備份。
+      </div>
+    </div>
+  </div>
+</aside>
+
+<input type="file" id="file-input" accept=".csv,.json,text/csv,application/json" hidden>
+<div id="tip" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ══════════════════════════════════════════════════════════════════════
+   資料層
+   ══════════════════════════════════════════════════════════════════════ */
+const STORE_KEY = 'pocket-money-v1';
+const THEME_KEY = 'pocket-money-theme';
+
+const DEFAULT_DB = {
+  version: 1,
+  settings: {
+    opening: 0,
+    expenseCategories: ['餐飲', '交通', '辦公用品', '郵電費', '交際費', '差旅', '雜項'],
+    incomeCategories: ['零用金撥補', '現金收入', '退款', '其他收入'],
+    people: ['我'],
+    payments: ['現金', '悠遊卡', '信用卡', '轉帳', '行動支付'],
+  },
+  records: [],
+};
+const LIST_LABELS = {
+  expenseCategories: '支出類別',
+  incomeCategories: '收入類別',
+  people: '記錄人',
+  payments: '付款方式',
+};
+
+let db = loadDB();
+
+function loadDB() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return structuredClone(DEFAULT_DB);
+    const parsed = JSON.parse(raw);
+    const out = structuredClone(DEFAULT_DB);
+    Object.assign(out.settings, parsed.settings || {});
+    out.records = Array.isArray(parsed.records) ? parsed.records.map(normalizeRecord).filter(Boolean) : [];
+    return out;
+  } catch (err) {
+    console.warn('讀取資料失敗，改用預設值', err);
+    return structuredClone(DEFAULT_DB);
+  }
+}
+function saveDB() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(db));
+  } catch (err) {
+    alert('儲存失敗（瀏覽器儲存空間可能已滿）：' + err.message);
+  }
+}
+function normalizeRecord(r) {
+  if (!r || typeof r !== 'object') return null;
+  const amount = Number(r.amount);
+  if (!isFinite(amount)) return null;
+  return {
+    id: r.id || uid(),
+    date: String(r.date || '').slice(0, 10),
+    type: r.type === 'income' ? 'income' : 'expense',
+    category: String(r.category ?? ''),
+    name: String(r.name ?? ''),
+    person: String(r.person ?? ''),
+    amount: Math.abs(amount),
+    payment: String(r.payment ?? ''),
+    note: String(r.note ?? ''),
+  };
+}
+function uid() {
+  return (crypto.randomUUID ? crypto.randomUUID() : 'r' + Date.now() + Math.random().toString(36).slice(2));
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   小工具
+   ══════════════════════════════════════════════════════════════════════ */
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+const nf = new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 2 });
+const money = n => nf.format(Math.round((n + Number.EPSILON) * 100) / 100);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const todayISO = () => new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD（本地時區）
+function monthKey(iso) { return (iso || '').slice(0, 7); }
+function monthLabel(key) {
+  const [y, m] = key.split('-');
+  return `${y.slice(2)}/${m}`;
+}
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+function seriesColors() {
+  return [1, 2, 3, 4, 5, 6].map(i => cssVar('--series-' + i));
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   狀態
+   ══════════════════════════════════════════════════════════════════════ */
+const filters = { from: '', to: '', type: 'all', category: 'all', person: 'all', payment: 'all', text: '' };
+const sortState = { key: 'date', dir: 'desc' };
+const chartViews = { monthly: 'chart', category: 'chart', person: 'chart', payment: 'chart' };
+let entryType = 'expense';
+let editingId = null;
+
+/* ══════════════════════════════════════════════════════════════════════
+   篩選與統計
+   ══════════════════════════════════════════════════════════════════════ */
+function filteredRecords() {
+  const kw = filters.text.trim().toLowerCase();
+  return db.records.filter(r => {
+    if (filters.from && r.date < filters.from) return false;
+    if (filters.to && r.date > filters.to) return false;
+    if (filters.type !== 'all' && r.type !== filters.type) return false;
+    if (filters.category !== 'all' && r.category !== filters.category) return false;
+    if (filters.person !== 'all' && r.person !== filters.person) return false;
+    if (filters.payment !== 'all' && r.payment !== filters.payment) return false;
+    if (kw && !(r.name.toLowerCase().includes(kw) || r.note.toLowerCase().includes(kw))) return false;
+    return true;
+  });
+}
+const sum = (arr, fn) => arr.reduce((a, b) => a + fn(b), 0);
+const totalOf = (rows, type) => sum(rows.filter(r => r.type === type), r => r.amount);
+
+function groupSum(rows, keyFn) {
+  const map = new Map();
+  for (const r of rows) {
+    const k = keyFn(r) || '（未填）';
+    map.set(k, (map.get(k) || 0) + r.amount);
+  }
+  return [...map.entries()].map(([key, value]) => ({ key, value }));
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   SVG 繪圖工具
+   ══════════════════════════════════════════════════════════════════════ */
+const SVGNS = 'http://www.w3.org/2000/svg';
+function svgEl(tag, attrs = {}) {
+  const n = document.createElementNS(SVGNS, tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v === undefined || v === null) continue;
+    n.setAttribute(k, v);
+  }
+  return n;
+}
+/** 頂端 4px 圓角、底端貼齊基準線的長條 */
+function barPathV(x, y, w, h, r = 4) {
+  const rr = Math.max(0, Math.min(r, w / 2, h));
+  return `M${x},${y + h} L${x},${y + rr} Q${x},${y} ${x + rr},${y} L${x + w - rr},${y} Q${x + w},${y} ${x + w},${y + rr} L${x + w},${y + h} Z`;
+}
+/** 右端 4px 圓角的橫條 */
+function barPathH(x, y, w, h, r = 4) {
+  const rr = Math.max(0, Math.min(r, h / 2, w));
+  return `M${x},${y} L${x + w - rr},${y} Q${x + w},${y} ${x + w},${y + rr} L${x + w},${y + h - rr} Q${x + w},${y + h} ${x + w - rr},${y + h} L${x},${y + h} Z`;
+}
+function arcPath(cx, cy, rOuter, rInner, a0, a1) {
+  const p = (r, a) => [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  const large = (a1 - a0) > Math.PI ? 1 : 0;
+  const [x0, y0] = p(rOuter, a0), [x1, y1] = p(rOuter, a1);
+  const [x2, y2] = p(rInner, a1), [x3, y3] = p(rInner, a0);
+  return `M${x0},${y0} A${rOuter},${rOuter} 0 ${large} 1 ${x1},${y1} L${x2},${y2} A${rInner},${rInner} 0 ${large} 0 ${x3},${y3} Z`;
+}
+function niceTicks(min, max, count = 4) {
+  if (min === max) { max = min + 1; }
+  const span = max - min;
+  const raw = span / count;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const norm = raw / mag;
+  const step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
+  const ticks = [];
+  for (let t = Math.floor(min / step) * step; t <= max + step * 0.001; t += step) ticks.push(Math.round(t * 1e6) / 1e6);
+  return ticks;
+}
+
+/* 提示氣泡 */
+const tip = $('#tip');
+function showTip(html, evt) {
+  tip.innerHTML = html;
+  tip.classList.add('show');
+  moveTip(evt);
+}
+function moveTip(evt) {
+  const pad = 14;
+  const rect = tip.getBoundingClientRect();
+  let x = evt.clientX + pad, y = evt.clientY + pad;
+  if (x + rect.width > innerWidth - 8) x = evt.clientX - rect.width - pad;
+  if (y + rect.height > innerHeight - 8) y = evt.clientY - rect.height - pad;
+  tip.style.left = Math.max(8, x) + 'px';
+  tip.style.top = Math.max(8, y) + 'px';
+}
+function hideTip() { tip.classList.remove('show'); }
+function bindTip(node, htmlFn) {
+  node.addEventListener('pointerenter', e => showTip(htmlFn(), e));
+  node.addEventListener('pointermove', moveTip);
+  node.addEventListener('pointerleave', hideTip);
+  node.addEventListener('focus', e => {
+    const r = node.getBoundingClientRect();
+    showTip(htmlFn(), { clientX: r.left + r.width / 2, clientY: r.top });
+  });
+  node.addEventListener('blur', hideTip);
+}
+function tipRow(color, label, value) {
+  return `<div class="t-row">${color ? `<span class="swatch" style="background:${color}"></span>` : ''}<span>${esc(label)}</span><span class="v">${value}</span></div>`;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   圖表：每月收支與結餘（長條 + 折線，同一座標軸、同一單位）
+   ══════════════════════════════════════════════════════════════════════ */
+function renderMonthly(host, rows) {
+  const map = new Map();
+  for (const r of rows) {
+    const k = monthKey(r.date);
+    if (!k) continue;
+    if (!map.has(k)) map.set(k, { key: k, income: 0, expense: 0 });
+    map.get(k)[r.type] += r.amount;
+  }
+  const data = [...map.values()].sort((a, b) => a.key.localeCompare(b.key)).slice(-12)
+    .map(d => ({ ...d, net: d.income - d.expense }));
+
+  if (chartViews.monthly === 'table' || !data.length) {
+    return renderTableView(host, data.length ? data : null,
+      ['月份', '收入', '支出', '結餘'],
+      data.map(d => [monthLabel(d.key), money(d.income), money(d.expense), money(d.net)]),
+      [false, true, true, true]);
+  }
+
+  const [c1, c2, c3] = seriesColors();
+  const W = Math.max(320, host.clientWidth || 360), H = 260;
+  const M = { t: 12, r: 12, b: 28, l: 56 };
+  const iw = W - M.l - M.r, ih = H - M.t - M.b;
+
+  const maxV = Math.max(1, ...data.map(d => Math.max(d.income, d.expense, d.net)));
+  const minV = Math.min(0, ...data.map(d => d.net));
+  const ticks = niceTicks(minV, maxV, 4);
+  const y0 = ticks[0], y1 = ticks[ticks.length - 1];
+  const Y = v => M.t + ih - ((v - y0) / (y1 - y0)) * ih;
+
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '每月收入、支出與結餘長條圖' });
+  const surface = cssVar('--surface-1');
+
+  for (const t of ticks) {
+    svg.append(svgEl('line', { x1: M.l, x2: W - M.r, y1: Y(t), y2: Y(t), stroke: t === 0 ? cssVar('--axis') : cssVar('--grid'), 'stroke-width': 1 }));
+    const lab = svgEl('text', { x: M.l - 8, y: Y(t) + 4, 'text-anchor': 'end', fill: cssVar('--text-muted'), 'font-size': 11, style: 'font-variant-numeric:tabular-nums' });
+    lab.textContent = money(t);
+    svg.append(lab);
+  }
+
+  const band = iw / data.length;
+  const groupW = Math.min(band * 0.62, 56);
+  const barW = (groupW - 2) / 2; // 兩條之間留 2px 表面間隙
+
+  data.forEach((d, i) => {
+    const gx = M.l + band * i + (band - groupW) / 2;
+    [['income', c1, '收入', gx], ['expense', c2, '支出', gx + barW + 2]].forEach(([k, color, label, x]) => {
+      const v = d[k];
+      if (v <= 0) return;
+      const h = Math.max(1, Y(0) - Y(v));
+      const p = svgEl('path', { d: barPathV(x, Y(v), barW, h), fill: color, tabindex: 0, role: 'img',
+        'aria-label': `${monthLabel(d.key)} ${label} ${money(v)}` });
+      bindTip(p, () => `<div class="t-title">${monthLabel(d.key)}</div>` +
+        tipRow(c1, '收入', money(d.income)) + tipRow(c2, '支出', money(d.expense)) + tipRow(c3, '結餘', money(d.net)));
+      svg.append(p);
+    });
+
+    const lab = svgEl('text', { x: M.l + band * i + band / 2, y: H - 8, 'text-anchor': 'middle', fill: cssVar('--text-muted'), 'font-size': 11 });
+    lab.textContent = monthLabel(d.key);
+    svg.append(lab);
+  });
+
+  // 結餘折線（與長條同單位、同一座標軸）
+  const pts = data.map((d, i) => [M.l + band * i + band / 2, Y(d.net)]);
+  if (pts.length > 1) {
+    svg.append(svgEl('path', { d: pts.map((p, i) => (i ? 'L' : 'M') + p[0] + ',' + p[1]).join(' '),
+      fill: 'none', stroke: c3, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+  }
+  pts.forEach((p, i) => {
+    const dot = svgEl('circle', { cx: p[0], cy: p[1], r: 4.5, fill: c3, stroke: surface, 'stroke-width': 2 });
+    svg.append(dot);
+    const hit = svgEl('circle', { cx: p[0], cy: p[1], r: 12, fill: 'transparent', tabindex: 0, role: 'img',
+      'aria-label': `${monthLabel(data[i].key)} 結餘 ${money(data[i].net)}` });
+    bindTip(hit, () => `<div class="t-title">${monthLabel(data[i].key)}</div>` +
+      tipRow(c1, '收入', money(data[i].income)) + tipRow(c2, '支出', money(data[i].expense)) + tipRow(c3, '結餘', money(data[i].net)));
+    svg.append(hit);
+  });
+
+  // 只在最後一個月直接標示結餘（選擇性直接標籤）
+  if (pts.length) {
+    const last = pts[pts.length - 1];
+    const t = svgEl('text', { x: last[0], y: last[1] - 12, 'text-anchor': 'end', fill: cssVar('--text-secondary'), 'font-size': 11, 'font-weight': 600 });
+    t.textContent = money(data[data.length - 1].net);
+    svg.append(t);
+  }
+
+  host.replaceChildren(svg, legend([['收入', c1], ['支出', c2], ['結餘', c3]]));
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   圖表：支出類別佔比（甜甜圈，最多 6 段 + 其他）
+   ══════════════════════════════════════════════════════════════════════ */
+function renderCategory(host, rows) {
+  const expenses = rows.filter(r => r.type === 'expense');
+  const all = groupSum(expenses, r => r.category).sort((a, b) => b.value - a.value);
+  const colors = seriesColors();
+  // 顏色跟著「類別」本身，不跟著排名：以設定清單中的位置決定色槽
+  const order = db.settings.expenseCategories;
+  const colorOf = key => colors[(order.indexOf(key) >= 0 ? order.indexOf(key) : hashIndex(key)) % colors.length];
+
+  let data = all;
+  if (all.length > 6) {
+    const head = all.slice(0, 5);
+    const rest = all.slice(5);
+    data = [...head, { key: '其他', value: sum(rest, d => d.value), rest }];
+  }
+  const total = sum(data, d => d.value);
+  const paint = data.map((d, i) => d.key === '其他' && all.length > 6 ? cssVar('--text-muted') : colorOf(d.key));
+
+  if (chartViews.category === 'table' || !data.length) {
+    return renderTableView(host, data.length ? data : null,
+      ['類別', '金額', '佔比'],
+      data.map(d => [d.key, money(d.value), total ? (d.value / total * 100).toFixed(1) + '%' : '—']),
+      [false, true, true]);
+  }
+
+  const W = Math.max(300, host.clientWidth || 340), H = 220;
+  const cx = W / 2, cy = H / 2, rOut = Math.min(W, H) / 2 - 10, rIn = rOut * 0.62;
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '支出類別佔比甜甜圈圖' });
+  const surface = cssVar('--surface-1');
+
+  let a = -Math.PI / 2;
+  data.forEach((d, i) => {
+    const frac = total ? d.value / total : 0;
+    const a1 = a + frac * Math.PI * 2;
+    const seg = svgEl('path', {
+      d: arcPath(cx, cy, rOut, rIn, a, Math.max(a1, a + 0.0001)),
+      fill: paint[i], stroke: surface, 'stroke-width': 2, tabindex: 0, role: 'img',
+      'aria-label': `${d.key} ${money(d.value)}，佔 ${(frac * 100).toFixed(1)}%`,
+    });
+    bindTip(seg, () => `<div class="t-title">${esc(d.key)}</div>` +
+      tipRow(paint[i], '支出', money(d.value)) + tipRow('', '佔比', (frac * 100).toFixed(1) + '%') +
+      (d.rest ? `<div style="color:var(--text-muted);margin-top:4px">含 ${d.rest.length} 個類別</div>` : ''));
+    svg.append(seg);
+    a = a1;
+  });
+
+  const t1 = svgEl('text', { x: cx, y: cy - 4, 'text-anchor': 'middle', fill: cssVar('--text-muted'), 'font-size': 11 });
+  t1.textContent = '支出合計';
+  const t2 = svgEl('text', { x: cx, y: cy + 18, 'text-anchor': 'middle', fill: cssVar('--text-primary'), 'font-size': 19, 'font-weight': 600 });
+  t2.textContent = money(total);
+  svg.append(t1, t2);
+
+  host.replaceChildren(svg, legend(data.map((d, i) => [
+    `${d.key}　${money(d.value)}（${total ? (d.value / total * 100).toFixed(1) : 0}%）`, paint[i],
+  ])));
+}
+function hashIndex(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   圖表：橫向長條（單一數列 → 單一顏色，不需圖例）
+   ══════════════════════════════════════════════════════════════════════ */
+function renderHBar(host, rows, keyFn, viewKey, colLabel) {
+  const data = groupSum(rows.filter(r => r.type === 'expense'), keyFn).sort((a, b) => b.value - a.value).slice(0, 10);
+  const total = sum(data, d => d.value);
+
+  if (chartViews[viewKey] === 'table' || !data.length) {
+    return renderTableView(host, data.length ? data : null,
+      [colLabel, '金額', '佔比'],
+      data.map(d => [d.key, money(d.value), total ? (d.value / total * 100).toFixed(1) + '%' : '—']),
+      [false, true, true]);
+  }
+
+  const color = seriesColors()[0];
+  const rowH = 30, W = Math.max(300, host.clientWidth || 340);
+  const labelW = Math.min(110, Math.max(64, W * 0.28));
+  const valueW = 74;
+  const H = data.length * rowH + 8;
+  const maxV = Math.max(...data.map(d => d.value), 1);
+  const plotW = W - labelW - valueW;
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': `${colLabel}支出橫條圖` });
+
+  data.forEach((d, i) => {
+    const y = i * rowH + 4;
+    const h = rowH - 12; // 相鄰長條之間留出表面間隙
+    const w = Math.max(2, (d.value / maxV) * plotW);
+
+    const lab = svgEl('text', { x: labelW - 10, y: y + h / 2 + 4, 'text-anchor': 'end', fill: cssVar('--text-secondary'), 'font-size': 12 });
+    lab.textContent = d.key.length > 8 ? d.key.slice(0, 7) + '…' : d.key;
+    svg.append(lab);
+
+    const p = svgEl('path', { d: barPathH(labelW, y, w, h), fill: color, tabindex: 0, role: 'img',
+      'aria-label': `${d.key} ${money(d.value)}` });
+    bindTip(p, () => `<div class="t-title">${esc(d.key)}</div>` +
+      tipRow(color, '支出', money(d.value)) + tipRow('', '佔比', total ? (d.value / total * 100).toFixed(1) + '%' : '—'));
+    svg.append(p);
+
+    const val = svgEl('text', { x: labelW + w + 8, y: y + h / 2 + 4, fill: cssVar('--text-secondary'), 'font-size': 12, style: 'font-variant-numeric:tabular-nums' });
+    val.textContent = money(d.value);
+    svg.append(val);
+  });
+
+  host.replaceChildren(svg);
+}
+
+/* 圖例 */
+function legend(items) {
+  const wrap = document.createElement('div');
+  wrap.className = 'legend';
+  wrap.innerHTML = items.map(([label, color]) =>
+    `<span class="item"><span class="swatch" style="background:${color}"></span>${esc(label)}</span>`).join('');
+  return wrap;
+}
+
+/* 表格版（每張圖的無障礙孿生檢視） */
+function renderTableView(host, data, headers, rowsData, numeric) {
+  if (!data) {
+    const e = document.createElement('div');
+    e.className = 'empty';
+    e.textContent = '這個範圍內沒有資料。';
+    host.replaceChildren(e);
+    return;
+  }
+  const wrap = document.createElement('div');
+  wrap.className = 'table-scroll';
+  wrap.innerHTML =
+    `<table class="mini-table"><thead><tr>${headers.map((h, i) => `<th class="${numeric[i] ? 'num' : ''}">${esc(h)}</th>`).join('')}</tr></thead>` +
+    `<tbody>${rowsData.map(r => `<tr>${r.map((c, i) => `<td class="${numeric[i] ? 'num' : ''}">${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  host.replaceChildren(wrap);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   畫面
+   ══════════════════════════════════════════════════════════════════════ */
+function renderStats(rows) {
+  const income = totalOf(rows, 'income');
+  const expense = totalOf(rows, 'expense');
+  const net = income - expense;
+  const balance = Number(db.settings.opening || 0) + totalOf(db.records, 'income') - totalOf(db.records, 'expense');
+  const cards = [
+    { k: '目前零用金餘額', v: money(balance), cls: balance < 0 ? 'neg' : '', hero: true, sub: `期初 ${money(db.settings.opening || 0)}（全部記錄）` },
+    { k: '期間收入', v: money(income), cls: 'pos' },
+    { k: '期間支出', v: money(expense), cls: '' },
+    { k: '期間淨額', v: (net >= 0 ? '+' : '−') + money(Math.abs(net)), cls: net >= 0 ? 'pos' : 'neg' },
+    { k: '筆數', v: nf.format(rows.length), cls: '' },
+  ];
+  $('#stats').innerHTML = cards.map(c =>
+    `<div class="card stat${c.hero ? ' hero' : ''}"><div class="k">${c.k}</div>` +
+    `<div class="v ${c.cls}">${c.v}</div>${c.sub ? `<div class="sub">${esc(c.sub)}</div>` : ''}</div>`).join('');
+}
+
+function renderCharts(rows) {
+  renderMonthly($('[data-chart="monthly"] .chart-host'), rows);
+  renderCategory($('[data-chart="category"] .chart-host'), rows);
+  renderHBar($('[data-chart="person"] .chart-host'), rows, r => r.person, 'person', '記錄人');
+  renderHBar($('[data-chart="payment"] .chart-host'), rows, r => r.payment, 'payment', '付款方式');
+}
+
+function renderTable(rows) {
+  const dir = sortState.dir === 'asc' ? 1 : -1;
+  const sorted = [...rows].sort((a, b) => {
+    const k = sortState.key;
+    let x = a[k], y = b[k];
+    if (k === 'amount') return (x - y) * dir;
+    x = String(x); y = String(y);
+    const c = x.localeCompare(y, 'zh-Hant');
+    return (c || a.date.localeCompare(b.date)) * dir;
+  });
+  const tbody = $('#records tbody');
+  tbody.innerHTML = sorted.map(r => {
+    const sign = r.type === 'income' ? '+' : '−';
+    return `<tr data-id="${r.id}">
+      <td>${esc(r.date)}</td>
+      <td><span class="tag">${r.type === 'income' ? '收入' : '支出'}</span></td>
+      <td>${esc(r.category)}</td>
+      <td>${esc(r.name)}</td>
+      <td>${esc(r.person)}</td>
+      <td class="num ${r.type === 'income' ? 'pos' : ''}">${sign}${money(r.amount)}</td>
+      <td>${esc(r.payment)}</td>
+      <td style="white-space:normal;color:var(--text-muted)">${esc(r.note)}</td>
+      <td style="text-align:right">
+        <button class="btn small ghost" data-act="edit">編輯</button>
+        <button class="btn small ghost danger" data-act="delete">刪除</button>
+      </td></tr>`;
+  }).join('');
+  $('#records-empty').hidden = sorted.length > 0;
+  $('#records').hidden = sorted.length === 0;
+  $('#record-count').textContent = `${nf.format(rows.length)} 筆（共 ${nf.format(db.records.length)} 筆）`;
+  $$('#records th.sortable').forEach(th => {
+    const active = th.dataset.sort === sortState.key;
+    th.setAttribute('aria-sort', active ? (sortState.dir === 'asc' ? 'ascending' : 'descending') : 'none');
+    th.dataset.label ??= th.textContent.trim();
+    th.textContent = th.dataset.label + (active ? (sortState.dir === 'asc' ? ' ▲' : ' ▼') : '');
+  });
+}
+
+function fillSelect(sel, values, { includeAll = false, allLabel = '全部', keep = true } = {}) {
+  const prev = keep ? sel.value : '';
+  sel.innerHTML = (includeAll ? `<option value="all">${allLabel}</option>` : '') +
+    values.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+  if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+}
+
+function renderFormSelects() {
+  const cats = entryType === 'income' ? db.settings.incomeCategories : db.settings.expenseCategories;
+  fillSelect($('#f-category'), cats);
+  fillSelect($('#f-person'), db.settings.people);
+  fillSelect($('#f-payment'), db.settings.payments);
+  $('#t-expense').setAttribute('aria-pressed', String(entryType === 'expense'));
+  $('#t-income').setAttribute('aria-pressed', String(entryType === 'income'));
+}
+
+function renderFilterSelects() {
+  const allCats = [...new Set([...db.settings.expenseCategories, ...db.settings.incomeCategories,
+    ...db.records.map(r => r.category)])].filter(Boolean);
+  const people = [...new Set([...db.settings.people, ...db.records.map(r => r.person)])].filter(Boolean);
+  const pays = [...new Set([...db.settings.payments, ...db.records.map(r => r.payment)])].filter(Boolean);
+
+  const tsel = $('#q-type');
+  if (!tsel.options.length) tsel.innerHTML = '<option value="all">全部</option><option value="expense">支出</option><option value="income">收入</option>';
+  fillSelect($('#q-category'), allCats, { includeAll: true });
+  fillSelect($('#q-person'), people, { includeAll: true });
+  fillSelect($('#q-payment'), pays, { includeAll: true });
+  $('#q-category').value = filters.category;
+  $('#q-person').value = filters.person;
+  $('#q-payment').value = filters.payment;
+  tsel.value = filters.type;
+}
+
+function render() {
+  renderFilterSelects();
+  renderFormSelects();
+  const rows = filteredRecords();
+  renderStats(rows);
+  renderCharts(rows);
+  renderTable(rows);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   表單
+   ══════════════════════════════════════════════════════════════════════ */
+$('#f-date').value = todayISO();
+
+function setEntryType(t) {
+  entryType = t;
+  renderFormSelects();
+}
+$('#t-expense').addEventListener('click', () => setEntryType('expense'));
+$('#t-income').addEventListener('click', () => setEntryType('income'));
+
+$('#entry-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const amount = Number($('#f-amount').value);
+  if (!isFinite(amount) || amount <= 0) { alert('請輸入大於 0 的金額。'); return; }
+  const rec = {
+    id: editingId || uid(),
+    date: $('#f-date').value || todayISO(),
+    type: entryType,
+    category: $('#f-category').value,
+    name: $('#f-name').value.trim(),
+    person: $('#f-person').value,
+    amount,
+    payment: $('#f-payment').value,
+    note: $('#f-note').value.trim(),
+  };
+  if (editingId) {
+    const i = db.records.findIndex(r => r.id === editingId);
+    if (i >= 0) db.records[i] = rec;
+    exitEditMode();
+  } else {
+    db.records.push(rec);
+  }
+  saveDB();
+  // 保留日期／記錄人／付款方式，方便連續輸入
+  $('#f-name').value = '';
+  $('#f-amount').value = '';
+  $('#f-note').value = '';
+  $('#f-name').focus();
+  render();
+});
+
+function enterEditMode(rec) {
+  editingId = rec.id;
+  setEntryType(rec.type);
+  $('#f-date').value = rec.date;
+  ensureOption($('#f-category'), rec.category);
+  ensureOption($('#f-person'), rec.person);
+  ensureOption($('#f-payment'), rec.payment);
+  $('#f-category').value = rec.category;
+  $('#f-person').value = rec.person;
+  $('#f-payment').value = rec.payment;
+  $('#f-name').value = rec.name;
+  $('#f-amount').value = rec.amount;
+  $('#f-note').value = rec.note;
+  $('#entry-title').textContent = '編輯記錄';
+  $('#btn-save').textContent = '儲存變更';
+  $('#edit-hint').textContent = `正在編輯 ${rec.date}／${rec.name || '（未命名）'}`;
+  $('#entry-section').classList.add('editing');
+  $('#entry-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function exitEditMode() {
+  editingId = null;
+  $('#entry-title').textContent = '新增記錄';
+  $('#btn-save').textContent = '新增';
+  $('#entry-section').classList.remove('editing');
+}
+function ensureOption(sel, value) {
+  if (value && ![...sel.options].some(o => o.value === value)) {
+    sel.insertAdjacentHTML('beforeend', `<option value="${esc(value)}">${esc(value)}</option>`);
+  }
+}
+$('#btn-cancel-edit').addEventListener('click', () => { exitEditMode(); render(); });
+
+/* 明細表格互動 */
+$('#records tbody').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const id = btn.closest('tr').dataset.id;
+  const rec = db.records.find(r => r.id === id);
+  if (!rec) return;
+  if (btn.dataset.act === 'edit') enterEditMode(rec);
+  else if (confirm(`確定刪除「${rec.name || rec.category}」${money(rec.amount)} 這筆記錄？`)) {
+    db.records = db.records.filter(r => r.id !== id);
+    if (editingId === id) exitEditMode();
+    saveDB(); render();
+  }
+});
+$$('#records th.sortable').forEach(th => th.addEventListener('click', () => {
+  const k = th.dataset.sort;
+  if (sortState.key === k) sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+  else { sortState.key = k; sortState.dir = k === 'amount' || k === 'date' ? 'desc' : 'asc'; }
+  renderTable(filteredRecords());
+}));
+
+/* ══════════════════════════════════════════════════════════════════════
+   篩選互動
+   ══════════════════════════════════════════════════════════════════════ */
+const bindFilter = (sel, key, evt = 'change') => $(sel).addEventListener(evt, e => {
+  filters[key] = e.target.value; render();
+});
+bindFilter('#q-from', 'from'); bindFilter('#q-to', 'to');
+bindFilter('#q-type', 'type'); bindFilter('#q-category', 'category');
+bindFilter('#q-person', 'person'); bindFilter('#q-payment', 'payment');
+$('#q-text').addEventListener('input', e => { filters.text = e.target.value; render(); });
+
+$$('[data-range]').forEach(b => b.addEventListener('click', () => {
+  const now = new Date();
+  const iso = d => d.toLocaleDateString('sv-SE');
+  const r = b.dataset.range;
+  if (r === 'all') { filters.from = ''; filters.to = ''; }
+  else if (r === 'this-month') {
+    filters.from = iso(new Date(now.getFullYear(), now.getMonth(), 1));
+    filters.to = iso(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+  } else if (r === 'last-month') {
+    filters.from = iso(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+    filters.to = iso(new Date(now.getFullYear(), now.getMonth(), 0));
+  } else if (r === 'this-year') {
+    filters.from = iso(new Date(now.getFullYear(), 0, 1));
+    filters.to = iso(new Date(now.getFullYear(), 11, 31));
+  } else {
+    const d = new Date(now); d.setDate(d.getDate() - Number(r));
+    filters.from = iso(d); filters.to = iso(now);
+  }
+  $('#q-from').value = filters.from;
+  $('#q-to').value = filters.to;
+  render();
+}));
+$('#btn-reset-filter').addEventListener('click', () => {
+  Object.assign(filters, { from: '', to: '', type: 'all', category: 'all', person: 'all', payment: 'all', text: '' });
+  $('#q-from').value = ''; $('#q-to').value = ''; $('#q-text').value = '';
+  render();
+});
+
+/* 圖表／表格切換 */
+$$('.view-toggle').forEach(btn => btn.addEventListener('click', () => {
+  const card = btn.closest('[data-chart]');
+  chartViews[card.dataset.chart] = btn.dataset.view;
+  $$('.view-toggle', card).forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+  renderCharts(filteredRecords());
+}));
+
+/* ══════════════════════════════════════════════════════════════════════
+   設定抽屜：下拉選單維護
+   ══════════════════════════════════════════════════════════════════════ */
+const drawer = $('#drawer'), backdrop = $('#drawer-backdrop');
+function openDrawer() {
+  renderSettings();
+  drawer.classList.add('open'); backdrop.classList.add('open');
+  $('#s-opening').focus();
+}
+function closeDrawer() { drawer.classList.remove('open'); backdrop.classList.remove('open'); }
+$('#btn-settings').addEventListener('click', openDrawer);
+$('#btn-close-drawer').addEventListener('click', closeDrawer);
+backdrop.addEventListener('click', closeDrawer);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && drawer.classList.contains('open')) closeDrawer(); });
+
+$('#s-opening').addEventListener('change', e => {
+  const v = Number(e.target.value);
+  db.settings.opening = isFinite(v) ? v : 0;
+  saveDB(); render();
+});
+
+/** 這個欄位有多少筆記錄在使用某個值 */
+function usageCount(listKey, value) {
+  if (listKey === 'people') return db.records.filter(r => r.person === value).length;
+  if (listKey === 'payments') return db.records.filter(r => r.payment === value).length;
+  const type = listKey === 'incomeCategories' ? 'income' : 'expense';
+  return db.records.filter(r => r.type === type && r.category === value).length;
+}
+/** 改名時同步更新既有記錄 */
+function renameInRecords(listKey, oldName, newName) {
+  for (const r of db.records) {
+    if (listKey === 'people' && r.person === oldName) r.person = newName;
+    else if (listKey === 'payments' && r.payment === oldName) r.payment = newName;
+    else if (listKey === 'expenseCategories' && r.type === 'expense' && r.category === oldName) r.category = newName;
+    else if (listKey === 'incomeCategories' && r.type === 'income' && r.category === oldName) r.category = newName;
+  }
+}
+
+function renderSettings() {
+  $('#s-opening').value = db.settings.opening || 0;
+  $$('.list-editor[data-list]').forEach(box => {
+    const key = box.dataset.list;
+    const list = db.settings[key];
+    $('.count', box).textContent = `（${list.length} 項）`;
+    const rows = $('.rows', box);
+    rows.innerHTML = list.map((name, i) => `
+      <div class="row" data-index="${i}">
+        <input type="text" value="${esc(name)}" aria-label="${esc(LIST_LABELS[key])}名稱">
+        <button class="btn small ghost" data-act="up" title="上移" ${i === 0 ? 'disabled' : ''}>↑</button>
+        <button class="btn small ghost" data-act="down" title="下移" ${i === list.length - 1 ? 'disabled' : ''}>↓</button>
+        <button class="btn small ghost danger" data-act="del" title="刪除">✕</button>
+      </div>`).join('');
+  });
+}
+
+$$('.list-editor[data-list]').forEach(box => {
+  const key = box.dataset.list;
+  const label = LIST_LABELS[key];
+
+  // 改名
+  $('.rows', box).addEventListener('change', e => {
+    const input = e.target.closest('input');
+    if (!input) return;
+    const i = Number(input.closest('.row').dataset.index);
+    const oldName = db.settings[key][i];
+    const newName = input.value.trim();
+    if (!newName) { input.value = oldName; return; }
+    if (newName === oldName) return;
+    if (db.settings[key].some((v, j) => j !== i && v === newName)) {
+      alert(`${label}「${newName}」已存在。`); input.value = oldName; return;
+    }
+    const used = usageCount(key, oldName);
+    if (used && !confirm(`有 ${used} 筆記錄使用「${oldName}」，要一起改成「${newName}」嗎？`)) {
+      input.value = oldName; return;
+    }
+    db.settings[key][i] = newName;
+    if (used) renameInRecords(key, oldName, newName);
+    saveDB(); renderSettings(); render();
+  });
+
+  // 上移／下移／刪除
+  $('.rows', box).addEventListener('click', e => {
+    const btn = e.target.closest('button[data-act]');
+    if (!btn) return;
+    const i = Number(btn.closest('.row').dataset.index);
+    const list = db.settings[key];
+    const act = btn.dataset.act;
+    if (act === 'up' && i > 0) [list[i - 1], list[i]] = [list[i], list[i - 1]];
+    else if (act === 'down' && i < list.length - 1) [list[i + 1], list[i]] = [list[i], list[i + 1]];
+    else if (act === 'del') {
+      if (list.length === 1) { alert(`至少要保留一個${label}。`); return; }
+      const used = usageCount(key, list[i]);
+      const msg = used
+        ? `有 ${used} 筆記錄使用「${list[i]}」。刪除後這些記錄仍會保留原本的值，只是不再出現在下拉選單。確定刪除？`
+        : `確定刪除${label}「${list[i]}」？`;
+      if (!confirm(msg)) return;
+      list.splice(i, 1);
+    }
+    saveDB(); renderSettings(); render();
+  });
+
+  // 新增
+  const addInput = $('.add input', box);
+  const addBtn = $('.add button', box);
+  const doAdd = () => {
+    const name = addInput.value.trim();
+    if (!name) return;
+    if (db.settings[key].includes(name)) { alert(`${label}「${name}」已存在。`); return; }
+    db.settings[key].push(name);
+    addInput.value = '';
+    saveDB(); renderSettings(); render();
+    addInput.focus();
+  };
+  addBtn.addEventListener('click', doAdd);
+  addInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doAdd(); } });
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   匯出／匯入
+   ══════════════════════════════════════════════════════════════════════ */
+function download(filename, content, mime) {
+  const blob = new Blob([content], { type: mime });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+const CSV_HEADERS = ['日期', '類型', '類別', '項目名稱', '記錄人', '金額', '付款方式', '備註'];
+const csvCell = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+
+$('#btn-export-csv').addEventListener('click', () => {
+  const rows = filteredRecords();
+  const lines = [CSV_HEADERS.map(csvCell).join(',')];
+  for (const r of rows) {
+    lines.push([r.date, r.type === 'income' ? '收入' : '支出', r.category, r.name, r.person, r.amount, r.payment, r.note].map(csvCell).join(','));
+  }
+  download(`零用金_${todayISO()}.csv`, '﻿' + lines.join('\r\n'), 'text/csv;charset=utf-8');
+});
+
+$('#btn-export-json').addEventListener('click', () => {
+  download(`零用金備份_${todayISO()}.json`, JSON.stringify(db, null, 2), 'application/json');
+});
+
+let importMode = 'csv';
+$('#btn-import-csv').addEventListener('click', () => { importMode = 'csv'; $('#file-input').click(); });
+$('#btn-import-json').addEventListener('click', () => { importMode = 'json'; $('#file-input').click(); });
+
+$('#file-input').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const text = await file.text();
+  try {
+    if (importMode === 'json') importJSON(text);
+    else importCSV(text);
+  } catch (err) {
+    alert('匯入失敗：' + err.message);
+  }
+});
+
+function importJSON(text) {
+  const parsed = JSON.parse(text);
+  if (!parsed || !Array.isArray(parsed.records)) throw new Error('這不是有效的備份檔。');
+  if (!confirm(`即將以備份檔取代目前資料（${parsed.records.length} 筆記錄）。確定？`)) return;
+  db = structuredClone(DEFAULT_DB);
+  Object.assign(db.settings, parsed.settings || {});
+  db.records = parsed.records.map(normalizeRecord).filter(Boolean);
+  saveDB(); exitEditMode(); render();
+  alert(`已還原 ${db.records.length} 筆記錄。`);
+}
+
+function parseCSV(text) {
+  const rows = [];
+  let row = [], cell = '', inQuotes = false;
+  const s = text.replace(/^﻿/, '');
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (s[i + 1] === '"') { cell += '"'; i++; }
+        else inQuotes = false;
+      } else cell += c;
+    } else if (c === '"') inQuotes = true;
+    else if (c === ',') { row.push(cell); cell = ''; }
+    else if (c === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+    else if (c !== '\r') cell += c;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter(r => r.some(c => c.trim() !== ''));
+}
+
+function importCSV(text) {
+  const rows = parseCSV(text);
+  if (rows.length < 2) throw new Error('檔案沒有資料列。');
+  const header = rows[0].map(h => h.trim());
+  const idx = name => header.indexOf(name);
+  const need = ['日期', '類型', '類別', '項目名稱', '記錄人', '金額', '付款方式'];
+  const missing = need.filter(n => idx(n) < 0);
+  if (missing.length) throw new Error(`缺少欄位：${missing.join('、')}。請先匯出一份 CSV 作為格式範本。`);
+
+  const imported = [];
+  for (const r of rows.slice(1)) {
+    const amount = Number(String(r[idx('金額')] ?? '').replace(/[,\s元$]/g, ''));
+    if (!isFinite(amount) || amount === 0) continue;
+    const typeRaw = String(r[idx('類型')] ?? '').trim();
+    imported.push(normalizeRecord({
+      date: String(r[idx('日期')] ?? '').trim().slice(0, 10),
+      type: (typeRaw === '收入' || typeRaw.toLowerCase() === 'income') ? 'income' : 'expense',
+      category: String(r[idx('類別')] ?? '').trim(),
+      name: String(r[idx('項目名稱')] ?? '').trim(),
+      person: String(r[idx('記錄人')] ?? '').trim(),
+      amount,
+      payment: String(r[idx('付款方式')] ?? '').trim(),
+      note: idx('備註') >= 0 ? String(r[idx('備註')] ?? '').trim() : '',
+    }));
+  }
+  if (!imported.length) throw new Error('沒有可匯入的資料列。');
+  if (!confirm(`要新增 ${imported.length} 筆記錄嗎？（會加在現有資料之後，不會覆蓋）`)) return;
+  db.records.push(...imported);
+  // 匯入資料中出現的新選項自動補進下拉選單
+  for (const r of imported) {
+    const catKey = r.type === 'income' ? 'incomeCategories' : 'expenseCategories';
+    if (r.category && !db.settings[catKey].includes(r.category)) db.settings[catKey].push(r.category);
+    if (r.person && !db.settings.people.includes(r.person)) db.settings.people.push(r.person);
+    if (r.payment && !db.settings.payments.includes(r.payment)) db.settings.payments.push(r.payment);
+  }
+  saveDB(); render();
+  alert(`已匯入 ${imported.length} 筆記錄。`);
+}
+
+$('#btn-clear').addEventListener('click', () => {
+  if (!db.records.length) { alert('目前沒有記錄。'); return; }
+  if (!confirm(`確定刪除全部 ${db.records.length} 筆記錄？此動作無法復原，建議先匯出備份。`)) return;
+  if (!confirm('再確認一次：真的要清空所有記錄嗎？')) return;
+  db.records = [];
+  saveDB(); exitEditMode(); render();
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   主題與尺寸
+   ══════════════════════════════════════════════════════════════════════ */
+const savedTheme = localStorage.getItem(THEME_KEY);
+if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+$('#btn-theme').addEventListener('click', () => {
+  const current = document.documentElement.dataset.theme ||
+    (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next;
+  localStorage.setItem(THEME_KEY, next);
+  renderCharts(filteredRecords());
+});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if (!document.documentElement.dataset.theme) renderCharts(filteredRecords());
+});
+
+let resizeTimer;
+addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => renderCharts(filteredRecords()), 120);
+});
+
+render();
+})();
+</script>
+</body>
+</html>
