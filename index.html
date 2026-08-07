@@ -29,6 +29,7 @@
   --series-6: #008300;
   --accent: #2a78d6;
   --accent-ink: #ffffff;
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='%2352514e' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 @media (prefers-color-scheme: dark) {
   :root:where(:not([data-theme="light"])) {
@@ -54,6 +55,7 @@
     --series-6: #008300;
     --accent: #3987e5;
     --accent-ink: #0d0d0d;
+    --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='%23c3c2b7' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   }
 }
 :root[data-theme="dark"] {
@@ -79,6 +81,7 @@
   --series-6: #008300;
   --accent: #3987e5;
   --accent-ink: #0d0d0d;
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='%23c3c2b7' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 * { box-sizing: border-box; }
@@ -137,9 +140,36 @@ input, select, textarea {
   border-radius: 7px;
   padding: 7px 9px;
   min-width: 0; width: 100%;
+  /* date／select 的原生高度跟一般文字框不一致（瀏覽器各自加了圖示或內距），
+     統一鎖定高度與行高，讓所有欄位在同一列裡看起來一樣高 */
+  height: 37px;
+  line-height: 21px;
+  appearance: none;
+  -webkit-appearance: none;
 }
 input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 1px;
+}
+/* 日期欄位的原生高度／圖示跟其他欄位的瀏覽器預設不一致，統一改成
+   自畫下拉箭頭／月曆圖示，外觀才會跟文字框、下拉選單完全對齊 */
+input[type="date"] { color-scheme: light; }
+:root:where(:not([data-theme="light"])) input[type="date"] { color-scheme: dark; }
+:root[data-theme="dark"] input[type="date"] { color-scheme: dark; }
+input[type="date"]::-webkit-calendar-picker-indicator {
+  margin-left: 6px;
+  cursor: pointer;
+  opacity: 0.65;
+  border-radius: 4px;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+
+select {
+  padding-right: 30px;
+  cursor: pointer;
+  background-image: var(--select-arrow);
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  background-size: 11px;
 }
 .btn {
   display: inline-flex; align-items: center; gap: 6px;
