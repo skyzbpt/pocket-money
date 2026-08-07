@@ -189,9 +189,12 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 .neg { color: var(--critical); }
 
 /* ── 圖表 ───────────────────────────────────────────────────────────── */
-.charts { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); }
+.charts { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); align-items: start; }
 .chart-host { width: 100%; }
 .chart-host svg { display: block; width: 100%; height: auto; overflow: visible; }
+/* 四張卡片的繪圖區固定同一個高度（圖表版由 SVG viewBox 控制），
+   表格版超過高度時卡片內自行捲動，讓四張卡片外觀大小一致、不撐開版面 */
+.chart-host .table-scroll { height: 260px; overflow-y: auto; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; }
 .legend .item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
 .legend .swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
@@ -888,17 +891,19 @@ function renderHBar(host, rows, keyFn, viewKey, colLabel) {
   }
 
   const color = seriesColors()[0];
-  const rowH = 30, W = Math.max(300, host.clientWidth || 340);
+  const W = Math.max(300, host.clientWidth || 340);
+  const H = 260; // 與其他三張卡片的繪圖區同高，卡片外觀才會一致
+  const rowSlot = H / data.length;
+  const barH = Math.min(28, rowSlot - 12); // 相鄰長條之間留出表面間隙
   const labelW = Math.min(110, Math.max(64, W * 0.28));
   const valueW = 74;
-  const H = data.length * rowH + 8;
   const maxV = Math.max(...data.map(d => d.value), 1);
   const plotW = W - labelW - valueW;
   const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': `${colLabel}支出橫條圖` });
 
   data.forEach((d, i) => {
-    const y = i * rowH + 4;
-    const h = rowH - 12; // 相鄰長條之間留出表面間隙
+    const y = i * rowSlot + (rowSlot - barH) / 2;
+    const h = barH;
     const w = Math.max(2, (d.value / maxV) * plotW);
 
     const lab = svgEl('text', { x: labelW - 10, y: y + h / 2 + 4, 'text-anchor': 'end', fill: cssVar('--text-secondary'), 'font-size': 12 });
