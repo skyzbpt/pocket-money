@@ -538,11 +538,18 @@ const LIST_LABELS = {
   payments: '付款方式',
 };
 
+/* 無痕視窗／被封鎖的儲存空間下，localStorage 存取會直接丟例外 */
+const store = {
+  get(key) { try { return localStorage.getItem(key); } catch { return null; } },
+  set(key, value) { localStorage.setItem(key, value); },
+  setQuiet(key, value) { try { localStorage.setItem(key, value); } catch { /* 忽略 */ } },
+};
+
 let db = loadDB();
 
 function loadDB() {
   try {
-    const raw = localStorage.getItem(STORE_KEY);
+    const raw = store.get(STORE_KEY);
     if (!raw) return structuredClone(DEFAULT_DB);
     const parsed = JSON.parse(raw);
     const out = structuredClone(DEFAULT_DB);
@@ -556,9 +563,9 @@ function loadDB() {
 }
 function saveDB() {
   try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(db));
+    store.set(STORE_KEY, JSON.stringify(db));
   } catch (err) {
-    alert('儲存失敗（瀏覽器儲存空間可能已滿）：' + err.message);
+    alert('儲存失敗（瀏覽器儲存空間可能已滿，或目前是無痕視窗）：' + err.message);
   }
 }
 function normalizeRecord(r) {
@@ -1430,14 +1437,14 @@ $('#btn-clear').addEventListener('click', () => {
 /* ══════════════════════════════════════════════════════════════════════
    主題與尺寸
    ══════════════════════════════════════════════════════════════════════ */
-const savedTheme = localStorage.getItem(THEME_KEY);
+const savedTheme = store.get(THEME_KEY);
 if (savedTheme) document.documentElement.dataset.theme = savedTheme;
 $('#btn-theme').addEventListener('click', () => {
   const current = document.documentElement.dataset.theme ||
     (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   const next = current === 'dark' ? 'light' : 'dark';
   document.documentElement.dataset.theme = next;
-  localStorage.setItem(THEME_KEY, next);
+  store.setQuiet(THEME_KEY, next);
   renderCharts(filteredRecords());
 });
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
