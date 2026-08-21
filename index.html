@@ -268,7 +268,10 @@ tbody tr:hover { background: var(--hover); }
   display: flex; align-items: center; gap: 10px;
   padding: 14px 16px; border-bottom: 1px solid var(--border);
 }
-.drawer-body { overflow-y: auto; padding: 16px; flex: 1; }
+/* overflow-anchor:none — 登入失敗訊息從 display:none 變成可見時，
+   瀏覽器的捲動錨定會自動把畫面往下捲以「保持錨點元素不動」，
+   結果反而把剛顯示的錯誤訊息捲出畫面，所以在這裡關掉 */
+.drawer-body { overflow-y: auto; overflow-anchor: none; padding: 16px; flex: 1; }
 .list-editor { margin-bottom: 22px; }
 .list-editor h3 { font-size: 13px; margin-bottom: 8px; }
 .list-editor .row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
@@ -308,6 +311,7 @@ tbody tr:hover { background: var(--hover); }
 <header class="topbar">
   <h1>零用金記錄表</h1>
   <div class="spacer"></div>
+  <button class="btn small ghost" id="sync-pill" hidden title="雲端同步狀態，點擊查看"></button>
   <button class="btn small icon-btn" id="btn-theme" title="切換淺色／深色">
     <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M8 1.5v1.6M8 12.9v1.6M2.5 8H1M15 8h-1.5M3.8 3.8l1.1 1.1M11.1 11.1l1.1 1.1M3.8 12.2l1.1-1.1M11.1 4.9l1.1-1.1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="8" r="3.1" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
     主題
@@ -486,6 +490,47 @@ tbody tr:hover { background: var(--hover); }
     <button class="btn small" id="btn-close-drawer">關閉</button>
   </div>
   <div class="drawer-body">
+    <div class="list-editor" id="sync-box" style="margin-bottom:26px">
+      <h3>雲端同步（跨裝置）</h3>
+
+      <div id="sync-setup">
+        <label class="field" style="margin-bottom:8px">
+          <span>伺服器網址</span>
+          <input type="url" id="sync-api-base" placeholder="https://pocket-money-api.你的帳號.workers.dev">
+        </label>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
+          部署好 worker 之後，把 Cloudflare 給的網址貼在這裡。
+        </div>
+        <div id="sync-tabs" class="type-toggle" role="group" aria-label="登入或註冊" style="margin-bottom:10px;max-width:220px">
+          <button type="button" id="sync-tab-login" aria-pressed="true">登入</button>
+          <button type="button" id="sync-tab-register" aria-pressed="false">建立帳號</button>
+        </div>
+        <form id="sync-form">
+          <label class="field" style="margin-bottom:8px">
+            <span>帳號</span>
+            <input type="text" id="sync-username" autocomplete="username" required>
+          </label>
+          <label class="field" style="margin-bottom:8px">
+            <span>密碼</span>
+            <input type="password" id="sync-password" autocomplete="current-password" required minlength="6">
+          </label>
+          <div id="sync-error" style="display:none;font-size:12px;color:var(--critical);margin-bottom:8px"></div>
+          <button class="btn small primary" type="submit" id="sync-submit">登入</button>
+        </form>
+      </div>
+
+      <div id="sync-connected" style="display:none">
+        <div style="font-size:13px;margin-bottom:4px">
+          已登入：<strong id="sync-username-display"></strong>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px" id="sync-status-line">已同步</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn small" id="btn-sync-now">立即同步</button>
+          <button class="btn small ghost" id="btn-sync-logout">登出</button>
+        </div>
+      </div>
+    </div>
+
     <div class="list-editor" style="margin-bottom:26px">
       <h3>期初零用金</h3>
       <div class="row">
@@ -601,12 +646,13 @@ function loadDB() {
     return structuredClone(DEFAULT_DB);
   }
 }
-function saveDB() {
+function saveDB(pushRemote = true) {
   try {
     store.set(STORE_KEY, JSON.stringify(db));
   } catch (err) {
     alert('儲存失敗（瀏覽器儲存空間可能已滿，或目前是無痕視窗）：' + err.message);
   }
+  if (pushRemote && syncConnected()) syncPush();
 }
 function normalizeRecord(r) {
   if (!r || typeof r !== 'object') return null;
@@ -1243,8 +1289,12 @@ $$('.view-toggle').forEach(btn => btn.addEventListener('click', () => {
 const drawer = $('#drawer'), backdrop = $('#drawer-backdrop');
 function openDrawer() {
   renderSettings();
+  syncRenderUI();
   drawer.classList.add('open'); backdrop.classList.add('open');
-  $('#s-opening').focus();
+  // 雲端同步區塊加進來後 #s-opening 不再是抽屜第一個欄位，
+  // 對焦它會把畫面捲走，所以對焦後強制把抽屜捲回最上面
+  $('#s-opening').focus({ preventScroll: true });
+  $('.drawer-body').scrollTop = 0;
 }
 function closeDrawer() { drawer.classList.remove('open'); backdrop.classList.remove('open'); }
 $('#btn-settings').addEventListener('click', openDrawer);
@@ -1477,6 +1527,200 @@ $('#btn-clear').addEventListener('click', () => {
 });
 
 /* ══════════════════════════════════════════════════════════════════════
+   雲端同步（Cloudflare Workers + D1，見 worker/ 目錄）
+   帳號登入後，整份 { settings, records } 會跟伺服器同步；沒有設定伺服器
+   網址或還沒登入時，app 的行為跟純本機版完全一樣。
+   ══════════════════════════════════════════════════════════════════════ */
+const SYNC_API_KEY = 'pocket-money-sync-api';
+const SYNC_TOKEN_KEY = 'pocket-money-sync-token';
+const SYNC_USER_KEY = 'pocket-money-sync-user';
+const SYNC_PUSH_DELAY = 800;
+
+const sync = {
+  apiBase: store.get(SYNC_API_KEY) || '',
+  token: store.get(SYNC_TOKEN_KEY) || '',
+  username: store.get(SYNC_USER_KEY) || '',
+  status: 'offline', // offline | syncing | synced | error
+  errorMsg: '',
+  pushTimer: null,
+};
+function syncConnected() { return !!(sync.apiBase && sync.token); }
+function persistSyncCreds() {
+  store.setQuiet(SYNC_API_KEY, sync.apiBase);
+  store.setQuiet(SYNC_TOKEN_KEY, sync.token);
+  store.setQuiet(SYNC_USER_KEY, sync.username);
+}
+function clearSyncCreds() {
+  sync.token = ''; sync.username = '';
+  persistSyncCreds();
+}
+
+async function syncRequest(path, options = {}) {
+  let res;
+  try {
+    res = await fetch(sync.apiBase.replace(/\/+$/, '') + path, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(sync.token ? { Authorization: 'Bearer ' + sync.token } : {}),
+        ...(options.headers || {}),
+      },
+    });
+  } catch {
+    throw new Error('連不上伺服器，請確認網址或網路連線。');
+  }
+  let body = null;
+  try { body = await res.json(); } catch { /* 沒有 body（例如 204） */ }
+  if (!res.ok) {
+    if (res.status === 401) { clearSyncCreds(); }
+    throw new Error((body && body.error) || `伺服器錯誤（${res.status}）`);
+  }
+  return body;
+}
+
+async function syncLogin(username, password, isRegister) {
+  const apiBase = $('#sync-api-base').value.trim().replace(/\/+$/, '');
+  if (!apiBase) throw new Error('請先填入伺服器網址。');
+  sync.apiBase = apiBase;
+  const body = await syncRequest(isRegister ? '/api/register' : '/api/login', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  });
+  sync.token = body.token;
+  sync.username = body.username;
+  persistSyncCreds();
+  await syncPullAndMerge();
+}
+
+/** 從伺服器拉資料：伺服器已經有資料就用它蓋掉本機；伺服器還沒有資料
+ *  （第一次連線）就把目前本機資料當成第一份上傳上去。 */
+async function syncPullAndMerge() {
+  sync.status = 'syncing'; syncRenderUI();
+  try {
+    const body = await syncRequest('/api/data', { method: 'GET' });
+    if (body.data && Array.isArray(body.data.records)) {
+      db = {
+        version: 1,
+        settings: { ...structuredClone(DEFAULT_DB.settings), ...(body.data.settings || {}) },
+        records: body.data.records.map(normalizeRecord).filter(Boolean),
+      };
+      saveDB(false);
+      exitEditMode();
+      render();
+      sync.status = 'synced'; sync.errorMsg = '';
+    } else {
+      await syncPush({ immediate: true });
+    }
+  } catch (err) {
+    sync.status = 'error'; sync.errorMsg = err.message;
+  }
+  syncRenderUI();
+}
+
+function syncPush({ immediate = false } = {}) {
+  if (!syncConnected()) return Promise.resolve();
+  if (sync.pushTimer) { clearTimeout(sync.pushTimer); sync.pushTimer = null; }
+  const doPush = async () => {
+    sync.status = 'syncing'; syncRenderUI();
+    try {
+      await syncRequest('/api/data', {
+        method: 'PUT',
+        body: JSON.stringify({ settings: db.settings, records: db.records }),
+      });
+      sync.status = 'synced'; sync.errorMsg = '';
+    } catch (err) {
+      sync.status = 'error'; sync.errorMsg = err.message;
+    }
+    syncRenderUI();
+  };
+  if (immediate) return doPush();
+  return new Promise(resolve => {
+    sync.pushTimer = setTimeout(() => doPush().then(resolve), SYNC_PUSH_DELAY);
+  });
+}
+
+function syncLogout() {
+  syncRequest('/api/logout', { method: 'POST' }).catch(() => { /* 伺服器端 session 過期也沒關係 */ });
+  clearSyncCreds();
+  sync.status = 'offline';
+  syncRenderUI();
+}
+
+function syncRenderUI() {
+  const connected = syncConnected();
+  $('#sync-setup').style.display = connected ? 'none' : '';
+  $('#sync-connected').style.display = connected ? '' : 'none';
+  if (connected) {
+    $('#sync-username-display').textContent = sync.username;
+    const line = $('#sync-status-line');
+    if (sync.status === 'syncing') line.textContent = '同步中…';
+    else if (sync.status === 'error') line.textContent = '同步失敗：' + sync.errorMsg;
+    else line.textContent = '已同步';
+    line.style.color = sync.status === 'error' ? 'var(--critical)' : 'var(--text-muted)';
+  } else {
+    $('#sync-api-base').value = sync.apiBase;
+  }
+  syncRenderTopbarPill();
+}
+function syncRenderTopbarPill() {
+  const pill = $('#sync-pill');
+  if (!sync.apiBase) { pill.hidden = true; return; }
+  pill.hidden = false;
+  const label = { syncing: '同步中', synced: '已同步', error: '同步失敗', offline: '未登入' }[sync.status] || '未登入';
+  pill.textContent = (syncConnected() && sync.status !== 'error' ? '☁ ' : '⚠ ') + label;
+  pill.title = syncConnected() ? ('雲端同步：已登入 ' + sync.username) : '雲端同步：尚未登入';
+}
+$('#sync-pill').addEventListener('click', openDrawer);
+
+$('#sync-tab-login').addEventListener('click', () => {
+  $('#sync-tab-login').setAttribute('aria-pressed', 'true');
+  $('#sync-tab-register').setAttribute('aria-pressed', 'false');
+  $('#sync-submit').textContent = '登入';
+  $('#sync-submit').dataset.mode = 'login';
+});
+$('#sync-tab-register').addEventListener('click', () => {
+  $('#sync-tab-login').setAttribute('aria-pressed', 'false');
+  $('#sync-tab-register').setAttribute('aria-pressed', 'true');
+  $('#sync-submit').textContent = '建立帳號並登入';
+  $('#sync-submit').dataset.mode = 'register';
+});
+$('#sync-submit').dataset.mode = 'login';
+
+$('#sync-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const username = $('#sync-username').value.trim();
+  const password = $('#sync-password').value;
+  const isRegister = $('#sync-submit').dataset.mode === 'register';
+  const errBox = $('#sync-error'), submitBtn = $('#sync-submit');
+  errBox.style.display = 'none';
+  submitBtn.disabled = true;
+  const original = submitBtn.textContent;
+  submitBtn.textContent = isRegister ? '建立中…' : '登入中…';
+  try {
+    await syncLogin(username, password, isRegister);
+    $('#sync-password').value = '';
+    syncRenderUI();
+  } catch (err) {
+    errBox.textContent = err.message;
+    errBox.style.display = '';
+    errBox.scrollIntoView({ block: 'nearest' });
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = original;
+  }
+});
+
+$('#btn-sync-now').addEventListener('click', () => syncPullAndMerge());
+$('#btn-sync-logout').addEventListener('click', () => {
+  if (confirm('登出後這台裝置會停止跟雲端同步，本機資料仍會保留。確定登出？')) syncLogout();
+});
+
+function syncInit() {
+  syncRenderUI();
+  if (syncConnected()) syncPullAndMerge();
+}
+
+/* ══════════════════════════════════════════════════════════════════════
    主題與尺寸
    ══════════════════════════════════════════════════════════════════════ */
 const savedTheme = store.get(THEME_KEY);
@@ -1500,6 +1744,7 @@ addEventListener('resize', () => {
 });
 
 render();
+syncInit();
 })();
 </script>
 </body>

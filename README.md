@@ -65,16 +65,55 @@ xdg-open index.html
 
 ## 資料存在哪裡
 
-資料存在**這台裝置這個瀏覽器**的 `localStorage`（key：`pocket-money-v1`），
+預設資料存在**這台裝置這個瀏覽器**的 `localStorage`（key：`pocket-money-v1`），
 不會上傳到任何伺服器。因此：
 
 - 換裝置、換瀏覽器看不到同一份資料
 - 清除瀏覽器資料（含「清除網站資料／Cookie」）會一併清掉記錄
 - 要搬移或長期保存，請用**匯出備份 JSON**
 
-如果要多人共用同一份帳，把備份 JSON 傳給對方還原即可；需要即時共用的話得另外接後端。
+如果只是偶爾要在裝置之間搬資料，把備份 JSON 傳給對方還原即可；
+如果要**跨裝置即時同步**（例如手機記帳、電腦看報表），可以照下面的步驟
+自己部署一個免費的雲端同步後端，帳號密碼登入後資料就會自動同步。
+
+## 跨裝置雲端同步（選用，Cloudflare Workers + D1）
+
+`worker/` 目錄是一個完整、可直接部署的 Cloudflare Worker API：
+帳號登入、密碼用 PBKDF2（100,000 次迭代）雜湊後存放，整份
+`{ settings, records }` 存成一筆 JSON，跟 app 內建的「匯出備份 JSON」
+是同一種格式，同步方式是整份覆蓋（最後寫入者為準）。
+
+**部署步驟**（約 5 分鐘，需要一個免費的 Cloudflare 帳號）：
+
+```bash
+cd worker
+npm install -g wrangler   # 或用 npx wrangler，不用全域安裝也可以
+wrangler login             # 瀏覽器會跳出來，登入你的 Cloudflare 帳號
+
+# 新建一個屬於你自己的 D1 資料庫，並套用資料庫結構
+wrangler d1 create pocket-money-db
+# ↑ 指令執行完會印出一組 database_id，把它貼到 wrangler.toml 裡的
+#   database_id 欄位（取代裡面預設的那組）
+wrangler d1 execute pocket-money-db --remote --file=./schema.sql
+
+# 部署！完成後終端機會印出一個網址，長得像：
+# https://pocket-money-api.你的帳號.workers.dev
+wrangler deploy
+```
+
+部署完成後回到 app：右上角「設定選單」→「雲端同步」→ 把
+Cloudflare 給的網址貼進「伺服器網址」→ 建立帳號（帳號＋密碼）。
+在另一台裝置打開同一個 `index.html`，貼上同一個伺服器網址、用同一組
+帳號密碼登入，就會看到同一份資料。
+
+沒有設定伺服器網址、或還沒登入的話，app 的行為跟純本機版完全一樣，
+不影響原本的離線使用。
+
+免費額度（Cloudflare Workers Free + D1 Free）對個人／家庭零用金記帳
+綽綽有餘，不需要輸入信用卡。
 
 ## 技術
 
-原生 HTML／CSS／JavaScript，圖表為手寫 SVG，**零相依套件、零外部請求**。
-整個應用就是一個 `index.html`。
+原生 HTML／CSS／JavaScript，圖表為手寫 SVG，前端**零相依套件、零外部請求**。
+雲端同步後端是零相依套件的 Cloudflare Worker（純 Web Crypto API 做密碼雜湊），
+見 `worker/` 目錄。不啟用雲端同步的話，整個應用就是一個 `index.html`。

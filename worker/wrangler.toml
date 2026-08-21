@@ -1,0 +1,19 @@
+name = "pocket-money-api"
+main = "src/index.js"
+compatibility_date = "2026-08-01"
+
+# 這個 database_id 對應到已經建立好、且已套用 schema.sql 的 D1 資料庫
+# 「pocket-money-db」。如果你想改用自己新建的資料庫，先跑：
+#   npx wrangler d1 create pocket-money-db
+#   npx wrangler d1 execute pocket-money-db --remote --file=./schema.sql
+# 再把下面的 database_id 換成新建立的那組 uuid。
+[[d1_databases]]
+binding = "DB"
+database_name = "pocket-money-db"
+database_id = "ec22dfcd-87c6-4812-952f-407975e83372"
+
+# 允許哪些網域呼叫這個 API。用 index.html 直接打開（file://）或放到
+# GitHub Pages／Cloudflare Pages 等靜態空間時，把對應網域填進來；
+# 開發時可以先用 "*"，正式使用建議收斂成實際會用到的網域。
+[vars]
+ALLOWED_ORIGIN = "*"
