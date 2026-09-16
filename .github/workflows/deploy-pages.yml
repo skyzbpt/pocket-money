@@ -1,0 +1,44 @@
+# 自動部署前端單檔頁面（Cloudflare Pages）
+#
+# 需要的 secret 跟 Worker 那個 workflow 一樣，但 API token 權限要再加上
+# Cloudflare Pages:Edit：
+#   CLOUDFLARE_API_TOKEN
+#   CLOUDFLARE_ACCOUNT_ID
+#
+# 第一次部署前，請先到 Cloudflare 儀表板 Workers & Pages → Create → Pages
+# 建立一個名為 pocket-money 的專案（選「Direct Upload」即可），否則 CI 會找不到專案。
+name: Deploy Pages
+
+on:
+  push:
+    branches:
+      - claude/expense-tracker-with-charts-9p3m2g
+    paths:
+      - 'index.html'
+      - '.github/workflows/deploy-pages.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # 只把 index.html 放進要上傳的目錄，避免把 worker 原始碼、README 一起發佈出去
+      - name: 準備要上傳的檔案
+        run: |
+          mkdir -p dist
+          cp index.html dist/
+
+      - name: 部署到 Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=pocket-money --branch=main

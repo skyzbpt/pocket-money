@@ -112,6 +112,52 @@ Cloudflare 給的網址貼進「伺服器網址」→ 建立帳號（帳號＋�
 免費額度（Cloudflare Workers Free + D1 Free）對個人／家庭零用金記帳
 綽綽有餘，不需要輸入信用卡。
 
+## 自動部署（GitHub Actions）
+
+設定好之後，push 到預設分支就會自動部署，不用再手動跑 `wrangler`。
+
+`.github/workflows/` 裡有兩個 workflow：
+
+| 檔案 | 什麼時候跑 | 做什麼 |
+|---|---|---|
+| `deploy-worker.yml` | `worker/` 底下有檔案變動時 | 部署雲端同步 API 到 Cloudflare Workers |
+| `deploy-pages.yml` | `index.html` 有變動時 | 把 `index.html` 部署到 Cloudflare Pages |
+
+兩個都可以到 GitHub 的 Actions 分頁手動觸發（Run workflow）。
+
+**第一次設定（做一次就好）：**
+
+1. **建一組 Cloudflare API Token**
+   到 [Cloudflare API Tokens](https://dash.cloudflare.com/profile/api-tokens) →
+   Create Token → Custom token，權限勾這三個：
+   - `Account` → `Workers Scripts` → `Edit`
+   - `Account` → `D1` → `Edit`
+   - `Account` → `Cloudflare Pages` → `Edit`
+
+2. **把 Token 放進 GitHub Secrets**
+   repo 的 Settings → Secrets and variables → Actions → New repository secret，
+   建立兩個：
+
+   | 名稱 | 值 |
+   |---|---|
+   | `CLOUDFLARE_API_TOKEN` | 上一步建立的 token |
+   | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare 儀表板右側的 Account ID |
+
+3. **建立 Pages 專案**（只有要用 `deploy-pages.yml` 才需要）
+   Cloudflare 儀表板 → Workers & Pages → Create → Pages → Direct Upload，
+   專案名稱填 `pocket-money`（要跟 workflow 裡的 `--project-name` 一致）。
+
+4. **D1 資料庫的 schema 只需套用一次**，workflow 不會自動跑：
+   ```bash
+   cd worker
+   npx wrangler d1 execute pocket-money-db --remote --file=./schema.sql
+   ```
+
+設定完成後，之後改 `index.html` 或 `worker/` 再 push，Cloudflare 上就會是最新版。
+
+> **安全性提醒**：`worker/wrangler.toml` 裡的 `ALLOWED_ORIGIN` 預設是 `"*"`（任何網域都能呼叫 API）。
+> 正式使用時建議改成你實際的前端網址，例如 `https://pocket-money.pages.dev`，改完再 push 一次即可生效。
+
 ## 技術
 
 原生 HTML／CSS／JavaScript，圖表為手寫 SVG，前端**零相依套件、零外部請求**。
