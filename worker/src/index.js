@@ -23,6 +23,8 @@ const PBKDF2_ITERATIONS = 100000;
  *   ALLOWED_ORIGIN = "https://guoding.pages.dev,null"
  * 其中 "null" 是瀏覽器直接開啟本機 index.html（file://）時送出的 Origin。
  * 填 "*" 則維持全開（不建議正式使用）。
+ *
+ * 注意：null 不只出現在 file://，sandboxed iframe 等情況也會送出 null。
  */
 function allowedOrigins(env) {
   return (env.ALLOWED_ORIGIN || '*')

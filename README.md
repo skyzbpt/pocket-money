@@ -156,8 +156,14 @@ Cloudflare 給的網址貼進「伺服器網址」→ 建立帳號（帳號＋�
 
 設定完成後，之後改 `index.html` 或 `worker/` 再 push，Cloudflare 上就會是最新版。
 
-> **安全性提醒**：`worker/wrangler.toml` 裡的 `ALLOWED_ORIGIN` 預設是 `"*"`（任何網域都能呼叫 API）。
-> 正式使用時建議改成你實際的前端網址，例如 `https://guoding.pages.dev`，改完再 push 一次即可生效。
+> **CORS 設定**：`worker/wrangler.toml` 裡的 `ALLOWED_ORIGIN` 是白名單，
+> 目前設為 `"https://guoding.pages.dev,null"`——前者是實際的前端網址，
+> `null` 是為了讓「直接用瀏覽器開啟本機 `index.html`」（`file://`）也能同步。
+>
+> 要注意 `null` 不是 `file://` 專用：sandboxed iframe 等情況送出的 Origin 也是 `null`，
+> 所以任何網站都有辦法造出這種請求。如果之後不再用檔案方式開啟，把 `,null` 拿掉會更嚴謹。
+>
+> 另外，CORS 只約束瀏覽器，不是身分驗證——真正擋住資料的是 Bearer token。
 
 ## 技術
 
