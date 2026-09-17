@@ -183,7 +183,7 @@ export default {
       if (pathname === '/api/data' && request.method === 'GET') return await handleGetData(env, request);
       if (pathname === '/api/data' && request.method === 'PUT') return await handlePutData(env, request);
       if (pathname === '/' || pathname === '/api') {
-        return json({ ok: true, service: 'pocket-money-api' }, 200, env);
+        return json({ ok: true, service: 'guoding' }, 200, env);
       }
       return json({ error: 'Not found' }, 404, env);
     } catch (err) {

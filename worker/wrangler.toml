@@ -1,4 +1,4 @@
-name = "pocket-money-api"
+name = "guoding"
 main = "src/index.js"
 compatibility_date = "2026-08-01"
 
