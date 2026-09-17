@@ -127,56 +127,44 @@ app 裡沒有「伺服器網址」這個設定——自己另外部署一套的�
 免費額度（Cloudflare Workers Free + D1 Free）對個人／家庭零用金記帳
 綽綽有餘，不需要輸入信用卡。
 
-## 自動部署（GitHub Actions）
+## 部署與 CI
 
-設定好之後，push 到預設分支就會自動部署，不用再手動跑 `wrangler`。
+**部署由 Cloudflare 的 Git 整合負責**，push 到預設分支之後它會自己從這個
+repo 建置並部署，不需要在 GitHub 這邊設定任何 token 或 secret：
 
-`.github/workflows/` 裡有兩個 workflow：
-
-| 檔案 | 什麼時候跑 | 做什麼 |
+| 目標 | 來源 | 網址 |
 |---|---|---|
-| `deploy-worker.yml` | `worker/` 底下有檔案變動時 | 部署雲端同步 API 到 Cloudflare Workers |
-| `deploy-pages.yml` | `index.html` 有變動時 | 把 `index.html` 部署到 Cloudflare Pages |
+| Worker（API） | `worker/` | `https://guoding.skyzbpt.workers.dev` |
+| Pages（前端） | 根目錄的 `index.html` 與 `_worker.js` | `https://guoding.pages.dev` |
 
-兩個都可以到 GitHub 的 Actions 分頁手動觸發（Run workflow）。
+**GitHub Actions 只跑測試**（`.github/workflows/ci.yml`），push 和 PR 都會觸發：
 
-**第一次設定（做一次就好）：**
+```bash
+cd worker && node cors-test.mjs   # CORS 白名單 11 項
+node router-test.mjs              # /api 路由分派 10 項
+node syntax-check.mjs             # index.html 內嵌 JS 與 _worker.js 語法
+```
 
-1. **建一組 Cloudflare API Token**
-   到 [Cloudflare API Tokens](https://dash.cloudflare.com/profile/api-tokens) →
-   Create Token → Custom token，權限勾這三個：
-   - `Account` → `Workers Scripts` → `Edit`
-   - `Account` → `D1` → `Edit`
-   - `Account` → `Cloudflare Pages` → `Edit`
+這些在本機直接跑就可以，不需要任何相依套件。
 
-2. **把 Token 放進 GitHub Secrets**
-   repo 的 Settings → Secrets and variables → Actions → New repository secret，
-   建立兩個：
+**D1 的 schema 只需套用一次**，CI 不會自動跑
+（目前的 `pocket-money-db` 已經套用過，不需要重跑）：
 
-   | 名稱 | 值 |
-   |---|---|
-   | `CLOUDFLARE_API_TOKEN` | 上一步建立的 token |
-   | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare 儀表板右側的 Account ID |
-
-3. **建立 Pages 專案**（只有要用 `deploy-pages.yml` 才需要）
-   Cloudflare 儀表板 → Workers & Pages → Create → Pages → Direct Upload，
-   專案名稱填 `guoding`（要跟 workflow 裡的 `--project-name` 一致）。
-
-4. **D1 資料庫的 schema 只需套用一次**，workflow 不會自動跑
-   （目前的 `pocket-money-db` 已經套用過了，不需要重跑）：
-   ```bash
-   cd worker
-   npx wrangler d1 execute pocket-money-db --remote --file=./schema.sql
-   ```
-
-設定完成後，之後改 `index.html` 或 `worker/` 再 push，Cloudflare 上就會是最新版。
+```bash
+cd worker
+npx wrangler d1 execute pocket-money-db --remote --file=./schema.sql
+```
 
 > **CORS 設定**：`worker/wrangler.toml` 裡的 `ALLOWED_ORIGIN` 是白名單，
-> 目前設為 `"https://guoding.pages.dev,null"`——前者是實際的前端網址，
-> `null` 是為了讓「直接用瀏覽器開啟本機 `index.html`」（`file://`）也能同步。
+> 目前設為 `"https://guoding.pages.dev,null"`。
 >
-> 要注意 `null` 不是 `file://` 專用：sandboxed iframe 等情況送出的 Origin 也是 `null`，
-> 所以任何網站都有辦法造出這種請求。如果之後不再用檔案方式開啟，把 `,null` 拿掉會更嚴謹。
+> 一般使用其實用不到 CORS——前端和 API 已經整合成同源，`/api/*` 由
+> `_worker.js` 轉送，瀏覽器不會發出跨來源請求。白名單是為了保護直接
+> 對 `guoding.skyzbpt.workers.dev` 發出的跨來源請求。
+>
+> 要注意 `null` 不是 `file://` 專用：sandboxed iframe 等情況送出的 Origin
+> 也是 `null`，所以任何網站都有辦法造出這種請求。不再需要用檔案方式開啟
+> 的話，把 `,null` 拿掉會更嚴謹。
 >
 > 另外，CORS 只約束瀏覽器，不是身分驗證——真正擋住資料的是 Bearer token。
 

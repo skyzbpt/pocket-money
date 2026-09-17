@@ -1,0 +1,37 @@
+# 只跑測試。部署不在這裡做——Cloudflare 的 Git 整合會自己從這個 repo
+# 建置並部署 guoding（Worker）與 guoding.pages.dev（Pages），所以這個
+# workflow 不需要任何 Cloudflare 憑證或 secret。
+name: CI
+
+on:
+  push:
+    branches:
+      - claude/expense-tracker-with-charts-9p3m2g
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: CORS 白名單（worker）
+        working-directory: worker
+        run: node cors-test.mjs
+
+      - name: /api 路由分派（Pages 入口）
+        run: node router-test.mjs
+
+      - name: 語法檢查（index.html、_worker.js）
+        run: node syntax-check.mjs
