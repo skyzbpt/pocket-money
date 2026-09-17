@@ -1,4 +1,4 @@
-name = "pocket-money-api"
+name = "guoding"
 main = "src/index.js"
 compatibility_date = "2026-08-01"
 
@@ -12,8 +12,13 @@ binding = "DB"
 database_name = "pocket-money-db"
 database_id = "ec22dfcd-87c6-4812-952f-407975e83372"
 
-# 允許哪些網域呼叫這個 API。用 index.html 直接打開（file://）或放到
-# GitHub Pages／Cloudflare Pages 等靜態空間時，把對應網域填進來；
-# 開發時可以先用 "*"，正式使用建議收斂成實際會用到的網域。
+# 允許哪些網域呼叫這個 API（CORS 白名單）。
+# 可以用逗號分隔填多個來源，必須跟瀏覽器送出的 Origin 完全一致
+# （含 https://、不含結尾斜線）。填 "*" 則是全開，不建議正式使用。
+#
+# 這裡的 "null" 是為了讓「直接用瀏覽器開啟本機 index.html」（file://）
+# 也能同步。注意 null 不是 file:// 專用：sandboxed iframe 和某些跨來源
+# 重新導向送出的也是 null，所以任何網站都有辦法造出 Origin: null 的請求。
+# 如果之後不再需要用檔案開啟，把 ",null" 拿掉會更嚴謹。
 [vars]
-ALLOWED_ORIGIN = "*"
+ALLOWED_ORIGIN = "https://guoding.pages.dev,null"

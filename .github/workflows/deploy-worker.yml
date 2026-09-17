@@ -37,6 +37,10 @@ jobs:
         working-directory: worker
         run: npm ci
 
+      - name: 跑測試（CORS 白名單）
+        working-directory: worker
+        run: npm test
+
       - name: 部署到 Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:

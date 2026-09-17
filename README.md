@@ -97,14 +97,18 @@ wrangler d1 create pocket-money-db
 wrangler d1 execute pocket-money-db --remote --file=./schema.sql
 
 # 部署！完成後終端機會印出一個網址，長得像：
-# https://pocket-money-api.你的帳號.workers.dev
+# https://guoding.你的帳號.workers.dev
 wrangler deploy
 ```
 
-部署完成後回到 app：右上角「設定選單」→「雲端同步」→ 把
-Cloudflare 給的網址貼進「伺服器網址」→ 建立帳號（帳號＋密碼）。
-在另一台裝置打開同一個 `index.html`，貼上同一個伺服器網址、用同一組
-帳號密碼登入，就會看到同一份資料。
+部署完成後回到 app：右上角「設定選單」→「雲端同步」→ 直接建立帳號
+（帳號＋密碼）就好，**不需要填伺服器網址**。
+
+因為前端和 API 是同一個網域（`guoding.pages.dev` 底下的 `/api/*` 會由
+`pages/_worker.js` 轉給 Worker），app 會自己找到後端。在另一台裝置打開
+同一個網址、用同一組帳號密碼登入，就會看到同一份資料。
+
+只有自己另外部署一套 worker 的人，才需要展開「進階：自訂伺服器網址」填入。
 
 沒有設定伺服器網址、或還沒登入的話，app 的行為跟純本機版完全一樣，
 不影響原本的離線使用。
@@ -145,9 +149,10 @@ Cloudflare 給的網址貼進「伺服器網址」→ 建立帳號（帳號＋�
 
 3. **建立 Pages 專案**（只有要用 `deploy-pages.yml` 才需要）
    Cloudflare 儀表板 → Workers & Pages → Create → Pages → Direct Upload，
-   專案名稱填 `pocket-money`（要跟 workflow 裡的 `--project-name` 一致）。
+   專案名稱填 `guoding`（要跟 workflow 裡的 `--project-name` 一致）。
 
-4. **D1 資料庫的 schema 只需套用一次**，workflow 不會自動跑：
+4. **D1 資料庫的 schema 只需套用一次**，workflow 不會自動跑
+   （目前的 `pocket-money-db` 已經套用過了，不需要重跑）：
    ```bash
    cd worker
    npx wrangler d1 execute pocket-money-db --remote --file=./schema.sql
@@ -155,8 +160,14 @@ Cloudflare 給的網址貼進「伺服器網址」→ 建立帳號（帳號＋�
 
 設定完成後，之後改 `index.html` 或 `worker/` 再 push，Cloudflare 上就會是最新版。
 
-> **安全性提醒**：`worker/wrangler.toml` 裡的 `ALLOWED_ORIGIN` 預設是 `"*"`（任何網域都能呼叫 API）。
-> 正式使用時建議改成你實際的前端網址，例如 `https://pocket-money.pages.dev`，改完再 push 一次即可生效。
+> **CORS 設定**：`worker/wrangler.toml` 裡的 `ALLOWED_ORIGIN` 是白名單，
+> 目前設為 `"https://guoding.pages.dev,null"`——前者是實際的前端網址，
+> `null` 是為了讓「直接用瀏覽器開啟本機 `index.html`」（`file://`）也能同步。
+>
+> 要注意 `null` 不是 `file://` 專用：sandboxed iframe 等情況送出的 Origin 也是 `null`，
+> 所以任何網站都有辦法造出這種請求。如果之後不再用檔案方式開啟，把 `,null` 拿掉會更嚴謹。
+>
+> 另外，CORS 只約束瀏覽器，不是身分驗證——真正擋住資料的是 Bearer token。
 
 ## 技術
 
