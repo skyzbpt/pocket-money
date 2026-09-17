@@ -513,16 +513,6 @@ tbody tr:hover { background: var(--hover); }
           <div id="sync-error" style="display:none;font-size:12px;color:var(--critical);margin-bottom:8px"></div>
           <button class="btn small primary" type="submit" id="sync-submit">登入</button>
         </form>
-        <details style="margin-top:12px">
-          <summary style="font-size:12px;color:var(--text-muted);cursor:pointer">進階：自訂伺服器網址</summary>
-          <label class="field" style="margin:8px 0 4px">
-            <span>伺服器網址</span>
-            <input type="url" id="sync-api-base" placeholder="留空即可，會自動連到預設伺服器">
-          </label>
-          <div style="font-size:12px;color:var(--text-muted)">
-            只有自己另外部署 worker 時才需要填。
-          </div>
-        </details>
       </div>
 
       <div id="sync-connected" style="display:none">
@@ -1537,9 +1527,10 @@ $('#btn-clear').addEventListener('click', () => {
    帳號登入後，整份 { settings, records } 會跟伺服器同步；沒有設定伺服器
    網址或還沒登入時，app 的行為跟純本機版完全一樣。
    ══════════════════════════════════════════════════════════════════════ */
-/* 預設的同步伺服器網址。使用者不必自己填，直接登入即可。
-   留空字串代表「跟前端同一個網域」（same-origin，呼叫 /api/... 相對路徑）。
-   自己另外部署 worker 的人，可以在設定裡的「進階：自訂伺服器網址」覆寫。 */
+/* 同步伺服器網址。使用者不需要（也無法）自己設定，直接登入即可。
+   空字串代表「跟前端同一個網域」（same-origin，呼叫 /api/... 相對路徑），
+   由 pages/_worker.js 把 /api/* 轉給 Worker。
+   自己另外部署一套的人，改這個常數即可。 */
 const DEFAULT_API_BASE = '';
 
 const SYNC_API_KEY = 'pocket-money-sync-api';
@@ -1590,8 +1581,7 @@ async function syncRequest(path, options = {}) {
 }
 
 async function syncLogin(username, password, isRegister) {
-  const override = $('#sync-api-base').value.trim().replace(/\/+$/, '');
-  sync.apiBase = override || DEFAULT_API_BASE;
+  sync.apiBase = DEFAULT_API_BASE;
   const body = await syncRequest(isRegister ? '/api/register' : '/api/login', {
     method: 'POST',
     body: JSON.stringify({ username, password }),
@@ -1667,9 +1657,6 @@ function syncRenderUI() {
     else if (sync.status === 'error') line.textContent = '同步失敗：' + sync.errorMsg;
     else line.textContent = '已同步';
     line.style.color = sync.status === 'error' ? 'var(--critical)' : 'var(--text-muted)';
-  } else {
-    // 用的是內建預設就留白，讓 placeholder 顯示「留空即可」
-    $('#sync-api-base').value = sync.apiBase === DEFAULT_API_BASE ? '' : sync.apiBase;
   }
   syncRenderTopbarPill();
 }
