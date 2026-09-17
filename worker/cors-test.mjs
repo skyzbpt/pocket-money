@@ -17,12 +17,12 @@ const t = (name, got, want) => {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}\n      got=${JSON.stringify(got)} want=${JSON.stringify(want)}`);
 };
 
-const tight = { ALLOWED_ORIGIN: 'https://guoding.pages.dev,null' };
-t('白名單內的網域 → 回傳該網域', ACAO(tight, 'https://guoding.pages.dev'), 'https://guoding.pages.dev');
+const tight = { ALLOWED_ORIGIN: 'https://guoding.skyzbpt.workers.dev,null' };
+t('白名單內的網域（app 自己的網址）→ 回傳該網域', ACAO(tight, 'https://guoding.skyzbpt.workers.dev'), 'https://guoding.skyzbpt.workers.dev');
 t('file:// 的 null → 允許', ACAO(tight, 'null'), 'null');
 t('不在名單的網域 → 不送 ACAO',   ACAO(tight, 'https://evil.example'), undefined);
 t('沒帶 Origin（curl）→ 不送 ACAO', ACAO(tight, undefined), undefined);
-t('大小寫/尾斜線不算同一個',       ACAO(tight, 'https://guoding.pages.dev/'), undefined);
+t('大小寫/尾斜線不算同一個',       ACAO(tight, 'https://guoding.skyzbpt.workers.dev/'), undefined);
 
 const open = { ALLOWED_ORIGIN: '*' };
 t('設成 * → 全開',                ACAO(open, 'https://anything.example'), '*');

@@ -1,7 +1,8 @@
 # 零用金記錄表
 
 一個單檔（single-file）的零用金收支記錄工具，含圖表分析。
-不需要安裝、不需要伺服器、不連外網——**直接用瀏覽器打開 `index.html` 就能用**。
+不需要安裝、不需要伺服器、不連外網——**直接用瀏覽器打開 `worker/public/index.html`
+就能用**（雲端同步是選用功能，見下方說明）。
 
 ## 功能
 
@@ -52,15 +53,15 @@
 
 ## 使用方式
 
-下載後用瀏覽器打開 `index.html` 即可；也可以放到任何靜態網頁空間（GitHub Pages 等）。
+下載後用瀏覽器打開 `worker/public/index.html` 即可；也可以放到任何靜態網頁空間。
 
 ```bash
 git clone https://github.com/skyzbpt/pocket-money.git
 cd pocket-money
 # macOS
-open index.html
+open worker/public/index.html
 # Linux
-xdg-open index.html
+xdg-open worker/public/index.html
 ```
 
 ## 資料存在哪裡
@@ -104,22 +105,11 @@ wrangler deploy
 部署完成後回到 app：右上角「設定選單」→「雲端同步」→ 直接建立帳號
 （帳號＋密碼）就好，**不需要填伺服器網址**。
 
-因為前端和 API 被整合成同一個網域：`https://guoding.pages.dev` 底下的
-`/api/*` 由根目錄的 `_worker.js` 轉給 `https://guoding.skyzbpt.workers.dev`，
-其餘路徑走靜態檔案。app 會自己找到後端，在另一台裝置打開同一個網址、
-用同一組帳號密碼登入，就會看到同一份資料。
-
-轉送有兩條路，`_worker.js` 會自動選用可用的那一條：
-
-| 方式 | 說明 |
-|---|---|
-| service binding | 走 Cloudflare 內部網路，比較快。需在 Pages 專案的 Settings → Functions → Service bindings 設定 `API` → `guoding` |
-| 公開網址 | 沒設定 binding 時的預設，直接打 `guoding.skyzbpt.workers.dev` |
-
-兩條路都不需要使用者做任何設定。
+因為前端和 API 在同一個 Worker、同一個網址底下，app 會自己找到後端。
+在另一台裝置打開同一個網址、用同一組帳號密碼登入，就會看到同一份資料。
 
 app 裡沒有「伺服器網址」這個設定——自己另外部署一套的人，直接改
-`index.html` 裡的 `DEFAULT_API_BASE` 常數即可。
+`worker/public/index.html` 裡的 `DEFAULT_API_BASE` 常數即可。
 
 沒有設定伺服器網址、或還沒登入的話，app 的行為跟純本機版完全一樣，
 不影響原本的離線使用。
@@ -129,20 +119,25 @@ app 裡沒有「伺服器網址」這個設定——自己另外部署一套的�
 
 ## 部署與 CI
 
-**部署由 Cloudflare 的 Git 整合負責**，push 到預設分支之後它會自己從這個
-repo 建置並部署，不需要在 GitHub 這邊設定任何 token 或 secret：
+**前端和 API 都在同一個 Worker 裡**，網址是
+`https://guoding.skyzbpt.workers.dev`：
 
-| 目標 | 來源 | 網址 |
-|---|---|---|
-| Worker（API） | `worker/` | `https://guoding.skyzbpt.workers.dev` |
-| Pages（前端） | 根目錄的 `index.html` 與 `_worker.js` | `https://guoding.pages.dev` |
+| 路徑 | 由誰處理 |
+|---|---|
+| `/` 等靜態路徑 | `worker/public/index.html`（Workers static assets） |
+| `/api/*` | `worker/src/index.js` |
+
+因為同源，app 呼叫 `/api/...` 相對路徑就好，不需要設定伺服器網址，
+也不會有 CORS 問題。
+
+**部署由 Cloudflare 的 Git 整合負責**，push 到預設分支之後它會自己從這個
+repo 建置並部署，不需要在 GitHub 這邊設定任何 token 或 secret。
 
 **GitHub Actions 只跑測試**（`.github/workflows/ci.yml`），push 和 PR 都會觸發：
 
 ```bash
 cd worker && node cors-test.mjs   # CORS 白名單 11 項
-node router-test.mjs              # /api 路由分派 10 項
-node syntax-check.mjs             # index.html 內嵌 JS 與 _worker.js 語法
+node syntax-check.mjs             # index.html 內嵌 JS 語法、DEFAULT_API_BASE 設定
 ```
 
 這些在本機直接跑就可以，不需要任何相依套件。
@@ -156,11 +151,11 @@ npx wrangler d1 execute pocket-money-db --remote --file=./schema.sql
 ```
 
 > **CORS 設定**：`worker/wrangler.toml` 裡的 `ALLOWED_ORIGIN` 是白名單，
-> 目前設為 `"https://guoding.pages.dev,null"`。
+> 目前設為 `"https://guoding.skyzbpt.workers.dev,null"`。
 >
-> 一般使用其實用不到 CORS——前端和 API 已經整合成同源，`/api/*` 由
-> `_worker.js` 轉送，瀏覽器不會發出跨來源請求。白名單是為了保護直接
-> 對 `guoding.skyzbpt.workers.dev` 發出的跨來源請求。
+> 一般使用其實用不到 CORS——前端和 API 在同一個 Worker、同一個網址，
+> 瀏覽器不會發出跨來源請求。白名單是為了保護「從別的網站直接打這個
+> API」的情況。
 >
 > 要注意 `null` 不是 `file://` 專用：sandboxed iframe 等情況送出的 Origin
 > 也是 `null`，所以任何網站都有辦法造出這種請求。不再需要用檔案方式開啟
@@ -172,4 +167,4 @@ npx wrangler d1 execute pocket-money-db --remote --file=./schema.sql
 
 原生 HTML／CSS／JavaScript，圖表為手寫 SVG，前端**零相依套件、零外部請求**。
 雲端同步後端是零相依套件的 Cloudflare Worker（純 Web Crypto API 做密碼雜湊），
-見 `worker/` 目錄。不啟用雲端同步的話，整個應用就是一個 `index.html`。
+見 `worker/src/`。不啟用雲端同步的話，整個應用就是一個 `index.html`。

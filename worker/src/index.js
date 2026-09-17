@@ -2,6 +2,7 @@
  * 零用金記錄表 — 雲端同步 API
  *
  * 純 Cloudflare Workers + D1，沒有用任何套件，方便直接 `wrangler deploy`。
+ * 前端（public/index.html）也由這個 Worker 托管，因此 app 與 API 同源。
  * 資料模型很簡單：帳號登入後，前端把整份 { settings, records } 當一個
  * JSON 存到 user_data，裝置之間靠「登入同一個帳號」拿到同一份資料，
  * 存檔方式是整份覆蓋（last write wins），跟 app 原本「匯出/匯入備份」
@@ -215,7 +216,8 @@ export default {
       if (pathname === '/api/logout' && request.method === 'POST') return await handleLogout(env, request);
       if (pathname === '/api/data' && request.method === 'GET') return await handleGetData(env, request);
       if (pathname === '/api/data' && request.method === 'PUT') return await handlePutData(env, request);
-      if (pathname === '/' || pathname === '/api') {
+      // '/' 不會走到這裡：靜態檔案（public/index.html）會先被比對到
+      if (pathname === '/api') {
         return json({ ok: true, service: 'guoding' }, 200, env, request);
       }
       return json({ error: 'Not found' }, 404, env, request);

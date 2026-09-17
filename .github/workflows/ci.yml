@@ -1,5 +1,5 @@
 # 只跑測試。部署不在這裡做——Cloudflare 的 Git 整合會自己從這個 repo
-# 建置並部署 guoding（Worker）與 guoding.pages.dev（Pages），所以這個
+# 建置並部署 guoding 這個 Worker（前端與 API 都在裡面），所以這個
 # workflow 不需要任何 Cloudflare 憑證或 secret。
 name: CI
 
@@ -30,8 +30,5 @@ jobs:
         working-directory: worker
         run: node cors-test.mjs
 
-      - name: /api 路由分派（Pages 入口）
-        run: node router-test.mjs
-
-      - name: 語法檢查（index.html、_worker.js）
+      - name: 語法檢查（index.html）
         run: node syntax-check.mjs

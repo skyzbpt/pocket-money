@@ -2,6 +2,15 @@ name = "guoding"
 main = "src/index.js"
 compatibility_date = "2026-08-01"
 
+# 前端（public/index.html）由這個 Worker 直接托管，所以 app 和 API 是同一個
+# 來源：使用者開 https://guoding.skyzbpt.workers.dev 就是完整的 app，
+# 裡面呼叫 /api/... 相對路徑，不需要設定伺服器網址，也不會有 CORS 問題。
+#
+# 靜態檔案會比 Worker 程式碼先被比對：/ 會直接回 public/index.html，
+# 只有比對不到檔案的路徑（例如 /api/login）才會進到 src/index.js。
+[assets]
+directory = "./public"
+
 # 這個 database_id 對應到已經建立好、且已套用 schema.sql 的 D1 資料庫
 # 「pocket-money-db」。如果你想改用自己新建的資料庫，先跑：
 #   npx wrangler d1 create pocket-money-db
@@ -16,9 +25,12 @@ database_id = "ec22dfcd-87c6-4812-952f-407975e83372"
 # 可以用逗號分隔填多個來源，必須跟瀏覽器送出的 Origin 完全一致
 # （含 https://、不含結尾斜線）。填 "*" 則是全開，不建議正式使用。
 #
-# 這裡的 "null" 是為了讓「直接用瀏覽器開啟本機 index.html」（file://）
-# 也能同步。注意 null 不是 file:// 專用：sandboxed iframe 和某些跨來源
-# 重新導向送出的也是 null，所以任何網站都有辦法造出 Origin: null 的請求。
-# 如果之後不再需要用檔案開啟，把 ",null" 拿掉會更嚴謹。
+# 前端由這個 Worker 自己托管，所以正常使用是同源的，根本不會觸發 CORS。
+# 這個白名單是保護「從別的網站直接打這個 API」的情況。
+#
+# "null" 是為了讓「直接用瀏覽器開啟本機 public/index.html」（file://）也能
+# 同步。注意 null 不是 file:// 專用：sandboxed iframe 和某些跨來源重新導向
+# 送出的也是 null，所以任何網站都有辦法造出 Origin: null 的請求。
+# 不再需要用檔案開啟的話，把 ",null" 拿掉會更嚴謹。
 [vars]
-ALLOWED_ORIGIN = "https://guoding.pages.dev,null"
+ALLOWED_ORIGIN = "https://guoding.skyzbpt.workers.dev,null"
