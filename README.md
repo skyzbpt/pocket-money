@@ -104,9 +104,19 @@ wrangler deploy
 部署完成後回到 app：右上角「設定選單」→「雲端同步」→ 直接建立帳號
 （帳號＋密碼）就好，**不需要填伺服器網址**。
 
-因為前端和 API 是同一個網域（`guoding.pages.dev` 底下的 `/api/*` 會由
-`pages/_worker.js` 轉給 Worker），app 會自己找到後端。在另一台裝置打開
-同一個網址、用同一組帳號密碼登入，就會看到同一份資料。
+因為前端和 API 被整合成同一個網域：`https://guoding.pages.dev` 底下的
+`/api/*` 由根目錄的 `_worker.js` 轉給 `https://guoding.skyzbpt.workers.dev`，
+其餘路徑走靜態檔案。app 會自己找到後端，在另一台裝置打開同一個網址、
+用同一組帳號密碼登入，就會看到同一份資料。
+
+轉送有兩條路，`_worker.js` 會自動選用可用的那一條：
+
+| 方式 | 說明 |
+|---|---|
+| service binding | 走 Cloudflare 內部網路，比較快。需在 Pages 專案的 Settings → Functions → Service bindings 設定 `API` → `guoding` |
+| 公開網址 | 沒設定 binding 時的預設，直接打 `guoding.skyzbpt.workers.dev` |
+
+兩條路都不需要使用者做任何設定。
 
 app 裡沒有「伺服器網址」這個設定——自己另外部署一套的人，直接改
 `index.html` 裡的 `DEFAULT_API_BASE` 常數即可。

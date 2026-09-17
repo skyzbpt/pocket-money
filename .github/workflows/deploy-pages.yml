@@ -8,10 +8,11 @@
 # 第一次部署前，請先到 Cloudflare 儀表板 Workers & Pages → Create → Pages
 # 建立一個名為 guoding 的專案（選「Direct Upload」即可），否則 CI 會找不到專案。
 #
-# 另外要設定一次 service binding，讓 /api/* 能轉給 guoding 這個 Worker：
+# service binding 是選用的最佳化，不設定也能運作：_worker.js 在沒有
+# binding 時會改打 https://guoding.skyzbpt.workers.dev 這個公開網址。
+# 想走 Cloudflare 內部網路（比較快）的話，設定一次：
 #   guoding（Pages 專案）→ Settings → Functions → Service bindings
 #   → Variable name 填 API、Service 選 guoding
-# 沒設定的話 /api/* 會回 503，前端就會顯示連不上伺服器。
 name: Deploy Pages
 
 on:
@@ -20,7 +21,8 @@ on:
       - claude/expense-tracker-with-charts-9p3m2g
     paths:
       - 'index.html'
-      - 'pages/**'
+      - '_worker.js'
+      - 'router-test.mjs'
       - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 
@@ -41,10 +43,10 @@ jobs:
         run: |
           mkdir -p dist
           cp index.html dist/
-          cp pages/_worker.js dist/
+          cp _worker.js dist/
 
       - name: 跑測試（/api 路由分派）
-        run: node pages/router-test.mjs
+        run: node router-test.mjs
 
       - name: 部署到 Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
