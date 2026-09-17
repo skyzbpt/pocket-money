@@ -494,12 +494,8 @@ tbody tr:hover { background: var(--hover); }
       <h3>雲端同步（跨裝置）</h3>
 
       <div id="sync-setup">
-        <label class="field" style="margin-bottom:8px">
-          <span>伺服器網址</span>
-          <input type="url" id="sync-api-base" placeholder="https://guoding.你的帳號.workers.dev">
-        </label>
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
-          部署好 worker 之後，把 Cloudflare 給的網址貼在這裡。
+          用同一組帳號密碼在不同裝置登入，資料就會同步。
         </div>
         <div id="sync-tabs" class="type-toggle" role="group" aria-label="登入或註冊" style="margin-bottom:10px;max-width:220px">
           <button type="button" id="sync-tab-login" aria-pressed="true">登入</button>
@@ -517,6 +513,16 @@ tbody tr:hover { background: var(--hover); }
           <div id="sync-error" style="display:none;font-size:12px;color:var(--critical);margin-bottom:8px"></div>
           <button class="btn small primary" type="submit" id="sync-submit">登入</button>
         </form>
+        <details style="margin-top:12px">
+          <summary style="font-size:12px;color:var(--text-muted);cursor:pointer">進階：自訂伺服器網址</summary>
+          <label class="field" style="margin:8px 0 4px">
+            <span>伺服器網址</span>
+            <input type="url" id="sync-api-base" placeholder="留空即可，會自動連到預設伺服器">
+          </label>
+          <div style="font-size:12px;color:var(--text-muted)">
+            只有自己另外部署 worker 時才需要填。
+          </div>
+        </details>
       </div>
 
       <div id="sync-connected" style="display:none">
@@ -1531,20 +1537,25 @@ $('#btn-clear').addEventListener('click', () => {
    帳號登入後，整份 { settings, records } 會跟伺服器同步；沒有設定伺服器
    網址或還沒登入時，app 的行為跟純本機版完全一樣。
    ══════════════════════════════════════════════════════════════════════ */
+/* 預設的同步伺服器網址。使用者不必自己填，直接登入即可。
+   留空字串代表「跟前端同一個網域」（same-origin，呼叫 /api/... 相對路徑）。
+   自己另外部署 worker 的人，可以在設定裡的「進階：自訂伺服器網址」覆寫。 */
+const DEFAULT_API_BASE = '';
+
 const SYNC_API_KEY = 'pocket-money-sync-api';
 const SYNC_TOKEN_KEY = 'pocket-money-sync-token';
 const SYNC_USER_KEY = 'pocket-money-sync-user';
 const SYNC_PUSH_DELAY = 800;
 
 const sync = {
-  apiBase: store.get(SYNC_API_KEY) || '',
+  apiBase: store.get(SYNC_API_KEY) ?? DEFAULT_API_BASE,
   token: store.get(SYNC_TOKEN_KEY) || '',
   username: store.get(SYNC_USER_KEY) || '',
   status: 'offline', // offline | syncing | synced | error
   errorMsg: '',
   pushTimer: null,
 };
-function syncConnected() { return !!(sync.apiBase && sync.token); }
+function syncConnected() { return !!sync.token; }
 function persistSyncCreds() {
   store.setQuiet(SYNC_API_KEY, sync.apiBase);
   store.setQuiet(SYNC_TOKEN_KEY, sync.token);
@@ -1567,7 +1578,7 @@ async function syncRequest(path, options = {}) {
       },
     });
   } catch {
-    throw new Error('連不上伺服器，請確認網址或網路連線。');
+    throw new Error('連不上伺服器，請確認網路連線。');
   }
   let body = null;
   try { body = await res.json(); } catch { /* 沒有 body（例如 204） */ }
@@ -1579,9 +1590,8 @@ async function syncRequest(path, options = {}) {
 }
 
 async function syncLogin(username, password, isRegister) {
-  const apiBase = $('#sync-api-base').value.trim().replace(/\/+$/, '');
-  if (!apiBase) throw new Error('請先填入伺服器網址。');
-  sync.apiBase = apiBase;
+  const override = $('#sync-api-base').value.trim().replace(/\/+$/, '');
+  sync.apiBase = override || DEFAULT_API_BASE;
   const body = await syncRequest(isRegister ? '/api/register' : '/api/login', {
     method: 'POST',
     body: JSON.stringify({ username, password }),
@@ -1658,13 +1668,15 @@ function syncRenderUI() {
     else line.textContent = '已同步';
     line.style.color = sync.status === 'error' ? 'var(--critical)' : 'var(--text-muted)';
   } else {
-    $('#sync-api-base').value = sync.apiBase;
+    // 用的是內建預設就留白，讓 placeholder 顯示「留空即可」
+    $('#sync-api-base').value = sync.apiBase === DEFAULT_API_BASE ? '' : sync.apiBase;
   }
   syncRenderTopbarPill();
 }
 function syncRenderTopbarPill() {
   const pill = $('#sync-pill');
-  if (!sync.apiBase) { pill.hidden = true; return; }
+  // 沒登入過就不顯示這個標籤（apiBase 可能是空字串＝same-origin，不能拿來判斷）
+  if (!syncConnected() && !sync.username) { pill.hidden = true; return; }
   pill.hidden = false;
   const label = { syncing: '同步中', synced: '已同步', error: '同步失敗', offline: '未登入' }[sync.status] || '未登入';
   pill.textContent = (syncConnected() && sync.status !== 'error' ? '☁ ' : '⚠ ') + label;
