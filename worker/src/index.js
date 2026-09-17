@@ -18,18 +18,45 @@
 const SESSION_DAYS = 30;
 const PBKDF2_ITERATIONS = 100000;
 
-function corsHeaders(env) {
-  return {
-    'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',
+/**
+ * ALLOWED_ORIGIN 可以填多個來源，用逗號分隔，例如：
+ *   ALLOWED_ORIGIN = "https://guoding.pages.dev,null"
+ * 其中 "null" 是瀏覽器直接開啟本機 index.html（file://）時送出的 Origin。
+ * 填 "*" 則維持全開（不建議正式使用）。
+ */
+function allowedOrigins(env) {
+  return (env.ALLOWED_ORIGIN || '*')
+    .split(',')
+    .map(o => o.trim())
+    .filter(Boolean);
+}
+
+/** 這個 Origin 可不可以用這個 API；沒帶 Origin（curl、同源請求）回傳 null。 */
+function resolveOrigin(env, request) {
+  const origin = request.headers.get('Origin');
+  if (!origin) return null;
+  const list = allowedOrigins(env);
+  if (list.includes('*')) return '*';
+  return list.includes(origin) ? origin : false;
+}
+
+function corsHeaders(env, request) {
+  const allowed = resolveOrigin(env, request);
+  const headers = {
     'Access-Control-Allow-Methods': 'GET,POST,PUT,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '86400',
+    // 回應會隨 Origin 不同而不同，不加這個會被快取汙染
+    'Vary': 'Origin',
   };
+  // allowed === false 代表這個 Origin 不在清單裡：不送 ACAO，瀏覽器就會擋下來
+  if (allowed) headers['Access-Control-Allow-Origin'] = allowed;
+  return headers;
 }
-function json(data, status, env) {
+function json(data, status, env, request) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders(env) },
+    headers: { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders(env, request) },
   });
 }
 function bytesToHex(bytes) {
@@ -97,11 +124,11 @@ async function getUserFromRequest(env, request) {
 async function handleRegister(env, request) {
   const body = await readJSON(request);
   if (!body || !isValidUsername(body.username) || !isValidPassword(body.password)) {
-    return json({ error: '帳號需 3-40 個字元；密碼至少 6 個字元。' }, 400, env);
+    return json({ error: '帳號需 3-40 個字元；密碼至少 6 個字元。' }, 400, env, request);
   }
   const username = body.username.trim();
   const existing = await env.DB.prepare('SELECT id FROM users WHERE username = ?').bind(username).first();
-  if (existing) return json({ error: '這個帳號已經被使用了。' }, 409, env);
+  if (existing) return json({ error: '這個帳號已經被使用了。' }, 409, env, request);
 
   const salt = randomHex(16);
   const hash = await hashPassword(body.password, salt);
@@ -110,61 +137,61 @@ async function handleRegister(env, request) {
   ).bind(username, hash, salt).first();
 
   const token = await createSession(env, inserted.id);
-  return json({ token, username }, 201, env);
+  return json({ token, username }, 201, env, request);
 }
 
 async function handleLogin(env, request) {
   const body = await readJSON(request);
   if (!body || typeof body.username !== 'string' || typeof body.password !== 'string') {
-    return json({ error: '請輸入帳號密碼。' }, 400, env);
+    return json({ error: '請輸入帳號密碼。' }, 400, env, request);
   }
   const username = body.username.trim();
   const user = await env.DB.prepare('SELECT id, username, password_hash, salt FROM users WHERE username = ?')
     .bind(username).first();
-  if (!user) return json({ error: '帳號或密碼錯誤。' }, 401, env);
+  if (!user) return json({ error: '帳號或密碼錯誤。' }, 401, env, request);
 
   const hash = await hashPassword(body.password, user.salt);
   if (!timingSafeEqual(hash, user.password_hash)) {
-    return json({ error: '帳號或密碼錯誤。' }, 401, env);
+    return json({ error: '帳號或密碼錯誤。' }, 401, env, request);
   }
   const token = await createSession(env, user.id);
-  return json({ token, username: user.username }, 200, env);
+  return json({ token, username: user.username }, 200, env, request);
 }
 
 async function handleLogout(env, request) {
   const auth = request.headers.get('Authorization') || '';
   const m = /^Bearer\s+(.+)$/.exec(auth);
   if (m) await env.DB.prepare('DELETE FROM sessions WHERE token = ?').bind(m[1].trim()).run();
-  return json({ ok: true }, 200, env);
+  return json({ ok: true }, 200, env, request);
 }
 
 async function handleGetData(env, request) {
   const user = await getUserFromRequest(env, request);
-  if (!user) return json({ error: '請先登入。' }, 401, env);
+  if (!user) return json({ error: '請先登入。' }, 401, env, request);
   const row = await env.DB.prepare('SELECT data, updated_at FROM user_data WHERE user_id = ?')
     .bind(user.id).first();
-  return json({ data: row ? JSON.parse(row.data) : null, updatedAt: row ? row.updated_at : null }, 200, env);
+  return json({ data: row ? JSON.parse(row.data) : null, updatedAt: row ? row.updated_at : null }, 200, env, request);
 }
 
 async function handlePutData(env, request) {
   const user = await getUserFromRequest(env, request);
-  if (!user) return json({ error: '請先登入。' }, 401, env);
+  if (!user) return json({ error: '請先登入。' }, 401, env, request);
   const body = await readJSON(request);
   if (!body || typeof body !== 'object' || !Array.isArray(body.records) || typeof body.settings !== 'object') {
-    return json({ error: '資料格式不正確，需要 { settings, records }。' }, 400, env);
+    return json({ error: '資料格式不正確，需要 { settings, records }。' }, 400, env, request);
   }
   // 限制單一使用者的資料大小，避免異常資料把 D1 塞爆（每筆記錄約 200 bytes，
   // 這裡抓一個相對寬鬆但足以擋住異常情況的上限）
   const payload = JSON.stringify({ settings: body.settings, records: body.records });
   if (payload.length > 8 * 1024 * 1024) {
-    return json({ error: '資料量過大，無法同步。' }, 413, env);
+    return json({ error: '資料量過大，無法同步。' }, 413, env, request);
   }
   const updatedAt = new Date().toISOString();
   await env.DB.prepare(
     `INSERT INTO user_data (user_id, data, updated_at) VALUES (?, ?, ?)
      ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
   ).bind(user.id, payload, updatedAt).run();
-  return json({ ok: true, updatedAt }, 200, env);
+  return json({ ok: true, updatedAt }, 200, env, request);
 }
 
 export default {
@@ -173,7 +200,11 @@ export default {
     const { pathname } = url;
 
     if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: corsHeaders(env) });
+      // Origin 不在白名單時直接擋掉 preflight，不讓它拿到可用的 CORS 標頭
+      if (resolveOrigin(env, request) === false) {
+        return new Response(null, { status: 403, headers: { 'Vary': 'Origin' } });
+      }
+      return new Response(null, { status: 204, headers: corsHeaders(env, request) });
     }
 
     try {
@@ -183,11 +214,11 @@ export default {
       if (pathname === '/api/data' && request.method === 'GET') return await handleGetData(env, request);
       if (pathname === '/api/data' && request.method === 'PUT') return await handlePutData(env, request);
       if (pathname === '/' || pathname === '/api') {
-        return json({ ok: true, service: 'guoding' }, 200, env);
+        return json({ ok: true, service: 'guoding' }, 200, env, request);
       }
-      return json({ error: 'Not found' }, 404, env);
+      return json({ error: 'Not found' }, 404, env, request);
     } catch (err) {
-      return json({ error: '伺服器錯誤：' + err.message }, 500, env);
+      return json({ error: '伺服器錯誤：' + err.message }, 500, env, request);
     }
   },
 };

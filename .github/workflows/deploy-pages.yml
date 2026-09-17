@@ -6,7 +6,7 @@
 #   CLOUDFLARE_ACCOUNT_ID
 #
 # 第一次部署前，請先到 Cloudflare 儀表板 Workers & Pages → Create → Pages
-# 建立一個名為 guoding-app 的專案（選「Direct Upload」即可），否則 CI 會找不到專案。
+# 建立一個名為 guoding 的專案（選「Direct Upload」即可），否則 CI 會找不到專案。
 name: Deploy Pages
 
 on:
@@ -41,4 +41,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=guoding-app --branch=main
+          command: pages deploy dist --project-name=guoding --branch=main
