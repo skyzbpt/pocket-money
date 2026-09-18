@@ -74,11 +74,12 @@ const boss = await loginRes.json();
 t('管理員登入成功', loginRes.status, 200);
 t('登入回傳 isAdmin', boss.isAdmin, true);
 
-// 管理員建立一般帳號
+// 管理員建立帳號：即使 body 帶了 isAdmin，新帳號一律是一般使用者
 const created = await call('POST', '/api/users', {
-  token: boss.token, body: { username: 'user1', password: 'abcdef' },
+  token: boss.token, body: { username: 'user1', password: 'abcdef', isAdmin: true },
 });
 t('管理員可以建立帳號', created.status, 201);
+t('新帳號一律非管理員', (await created.json()).user.isAdmin, false);
 
 // 一般使用者登入後不能管帳號
 const u1 = await (await call('POST', '/api/login', { body: { username: 'user1', password: 'abcdef' } })).json();
