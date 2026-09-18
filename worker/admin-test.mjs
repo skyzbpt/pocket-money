@@ -50,7 +50,7 @@ function call(method, path, { token, body } = {}) {
 
 let fail = 0;
 const t = (name, got, want) => {
-  const ok = got === want;
+  const ok = JSON.stringify(got) === JSON.stringify(want);
   if (!ok) fail++;
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}\n      got=${JSON.stringify(got)} want=${JSON.stringify(want)}`);
 };
@@ -110,6 +110,68 @@ t('管理員不能刪除自己', (await call('DELETE', '/api/users/1', { token: 
 t('管理員可以刪除別的帳號', (await call('DELETE', '/api/users/2', { token: boss.token })).status, 200);
 t('刪掉後只剩一個帳號',
   (await (await call('GET', '/api/users', { token: boss.token })).json()).users.length, 1);
+
+/* ── 共用帳本 ────────────────────────────────────────────────────── */
+DB = makeDB();
+DB.prepare(insertSQL).run();   // boss（管理員）
+const boss2 = await (await call('POST', '/api/login', { body: { username: 'boss', password: 'secret123' } })).json();
+await call('POST', '/api/users', { token: boss2.token, body: { username: 'staff', password: 'abcdef' } });
+const staff = await (await call('POST', '/api/login', { body: { username: 'staff', password: 'abcdef' } })).json();
+
+const rec = (id, amount) => ({ id, date: '2026-09-18', type: 'expense', category: '餐費',
+  name: id, person: 'x', amount, payment: '現金', note: '' });
+
+// 管理員先建立第一份帳本
+const first = await call('PUT', '/api/data', {
+  token: boss2.token, body: { settings: { people: ['boss'] }, records: [rec('r1', 100)], baseRev: 0 },
+});
+t('管理員可以整份覆寫', first.status, 200);
+const rev1 = (await first.json()).rev;
+t('覆寫後 rev 前進', rev1, 1);
+
+// 員工看到的是同一本帳
+const staffView = await (await call('GET', '/api/data', { token: staff.token })).json();
+t('員工看得到管理員記的帳', staffView.data.records.map(r => r.id), ['r1']);
+t('員工拿到同一個 rev', staffView.rev, rev1);
+
+// 員工只能追加
+const appended = await call('POST', '/api/records', { token: staff.token, body: { records: [rec('r2', 50)] } });
+t('員工可以追加記錄', appended.status, 200);
+const afterAppend = await appended.json();
+t('追加後兩筆都在', afterAppend.data.records.map(r => r.id), ['r1', 'r2']);
+t('管理員也看得到員工記的帳',
+  (await (await call('GET', '/api/data', { token: boss2.token })).json()).data.records.length, 2);
+t('重送同一批不會變兩筆',
+  (await (await call('POST', '/api/records', { token: staff.token, body: { records: [rec('r2', 50)] } })).json())
+    .data.records.filter(r => r.id === 'r2').length, 1);
+t('員工不能整份覆寫',
+  (await call('PUT', '/api/data', { token: staff.token, body: { settings: {}, records: [], baseRev: afterAppend.rev } })).status, 403);
+t('員工不能用追加改掉既有記錄',
+  (await (await call('POST', '/api/records', { token: staff.token, body: { records: [rec('r1', 99999)] } })).json())
+    .data.records.find(r => r.id === 'r1').amount, 100);
+
+// 版本檢查：管理員拿舊的 baseRev 覆寫會被擋下
+const stale = await call('PUT', '/api/data', {
+  token: boss2.token, body: { settings: {}, records: [rec('r1', 100)], baseRev: 0 },
+});
+t('用過期的 baseRev 覆寫回 409', stale.status, 409);
+const staleBody = await stale.json();
+t('409 會附上最新資料', staleBody.data.records.length, 2);
+t('被擋下後資料沒有被改掉',
+  (await (await call('GET', '/api/data', { token: boss2.token })).json()).data.records.length, 2);
+
+// 用正確的 rev 就可以刪
+const del = await call('PUT', '/api/data', {
+  token: boss2.token, body: { settings: {}, records: [rec('r2', 50)], baseRev: staleBody.rev },
+});
+t('管理員用最新 rev 可以刪記錄', del.status, 200);
+t('刪除後只剩一筆',
+  (await (await call('GET', '/api/data', { token: boss2.token })).json()).data.records.map(r => r.id), ['r2']);
+
+// 刪帳號不會刪掉共用帳本
+await call('DELETE', '/api/users/2', { token: boss2.token });
+t('刪帳號後帳本還在',
+  (await (await call('GET', '/api/data', { token: boss2.token })).json()).data.records.length, 1);
 
 console.log(fail === 0 ? '\n全部通過' : `\n${fail} 項失敗`);
 process.exit(fail === 0 ? 0 : 1);

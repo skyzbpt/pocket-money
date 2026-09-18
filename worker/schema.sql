@@ -31,8 +31,18 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 
--- 每個帳號的完整資料（settings + records）存成一份 JSON，
--- 跟 app 內建的「匯出備份 JSON」是同一種格式，同步邏輯就是整份覆蓋。
+-- 全站共用的一份帳本（settings + records），所有帳號讀寫的都是這一列。
+-- 格式跟 app 內建的「匯出備份 JSON」相同。
+-- rev 是版本號：管理員整份覆寫時會檢查，避免蓋掉別人剛寫進來的資料。
+CREATE TABLE IF NOT EXISTS shared_data (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  data TEXT NOT NULL,
+  rev INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- 舊版是「每個帳號各自一份」，保留這張表只是為了保險（已不再使用）。
+-- 從舊版升級時把各帳號的記錄合併成一份共用帳本，見 README 的升級說明。
 CREATE TABLE IF NOT EXISTS user_data (
   user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   data TEXT NOT NULL,

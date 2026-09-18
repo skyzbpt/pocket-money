@@ -3,10 +3,14 @@
  *
  * 純 Cloudflare Workers + D1，沒有用任何套件，方便直接 `wrangler deploy`。
  * 前端（public/index.html）也由這個 Worker 托管，因此 app 與 API 同源。
- * 資料模型很簡單：帳號登入後，前端把整份 { settings, records } 當一個
- * JSON 存到 user_data，裝置之間靠「登入同一個帳號」拿到同一份資料，
- * 存檔方式是整份覆蓋（last write wins），跟 app 原本「匯出/匯入備份」
- * 是同一種資料格式。
+ *
+ * 資料模型：**全站只有一本帳**。所有帳號讀寫的都是 shared_data 裡的同一份
+ * { settings, records }（格式同 app 的「匯出備份 JSON」），誰記的帳大家都看得到。
+ *
+ * 寫入分兩條路，對應兩種身分：
+ *   - 一般員工：只能 POST /api/records 追加記錄，永遠不會蓋掉別人的資料
+ *   - 管理員：PUT /api/data 整份覆寫，但要帶 baseRev；版本對不上回 409，
+ *     由前端重新拉取後再操作，避免兩個人同時改互相覆蓋
  *
  * 帳號一律由管理員建立與維護：沒有公開註冊，使用者也不能自己改密碼。
  *
@@ -14,8 +18,9 @@
  *   POST   /api/login      { username, password } -> { token, username, isAdmin }
  *   POST   /api/logout     (需要 Authorization: Bearer <token>)
  *   GET    /api/me         (需要登入) -> { username, isAdmin }
- *   GET    /api/data       (需要登入) -> { data } 或 { data: null }
- *   PUT    /api/data       (需要登入) body: 完整的 { settings, records }
+ *   GET    /api/data       (需要登入) -> { data, rev } 或 { data: null, rev: 0 }
+ *   POST   /api/records    (需要登入) { records: [...] } -> 追加記錄（員工用）
+ *   PUT    /api/data       (需要管理員) { settings, records, baseRev } -> 整份覆寫
  *   GET    /api/users      (需要管理員) -> { users: [...] }
  *   POST   /api/users      (需要管理員) { username, password } -> 建立帳號（一律非管理員）
  *   PATCH  /api/users/:id  (需要管理員) { password?, isAdmin? } -> 改密碼／改權限
@@ -251,7 +256,8 @@ async function handleDeleteUser(env, request, targetId) {
     const row = await env.DB.prepare('SELECT COUNT(*) AS n FROM users WHERE is_admin = 1').first();
     if (Number(row.n) <= 1) return json({ error: '至少要保留一位管理員。' }, 400, env, request);
   }
-  // D1 預設沒開 foreign key cascade，這裡自己把附屬資料清乾淨
+  // D1 預設沒開 foreign key cascade，這裡自己把附屬資料清乾淨。
+  // 帳本是全站共用的，不會跟著帳號一起刪。
   await env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(target.id).run();
   await env.DB.prepare('DELETE FROM user_data WHERE user_id = ?').bind(target.id).run();
   await env.DB.prepare('DELETE FROM users WHERE id = ?').bind(target.id).run();
@@ -291,33 +297,90 @@ async function handleLogout(env, request) {
   return json({ ok: true }, 200, env, request);
 }
 
+const MAX_PAYLOAD = 8 * 1024 * 1024;
+
+/** 讀出共用帳本；還沒有資料時回傳 rev 0。 */
+async function readShared(env) {
+  const row = await env.DB.prepare('SELECT data, rev, updated_at FROM shared_data WHERE id = 1').first();
+  if (!row) return { data: null, rev: 0, updatedAt: null };
+  return { data: JSON.parse(row.data), rev: Number(row.rev), updatedAt: row.updated_at };
+}
+
+/** 寫回共用帳本並把 rev 加一。 */
+async function writeShared(env, data) {
+  const payload = JSON.stringify(data);
+  if (payload.length > MAX_PAYLOAD) return null;
+  const updatedAt = new Date().toISOString();
+  const row = await env.DB.prepare(
+    `INSERT INTO shared_data (id, data, rev, updated_at) VALUES (1, ?, 1, ?)
+     ON CONFLICT(id) DO UPDATE SET data = excluded.data, rev = shared_data.rev + 1,
+       updated_at = excluded.updated_at
+     RETURNING rev, updated_at`,
+  ).bind(payload, updatedAt).first();
+  return { rev: Number(row.rev), updatedAt: row.updated_at };
+}
+
+/** 一筆記錄至少要有 id 與合法金額才收。 */
+function validRecord(r) {
+  return r && typeof r === 'object' && typeof r.id === 'string' && r.id
+    && isFinite(Number(r.amount));
+}
+
 async function handleGetData(env, request) {
   const user = await getUserFromRequest(env, request);
   if (!user) return json({ error: '請先登入。' }, 401, env, request);
-  const row = await env.DB.prepare('SELECT data, updated_at FROM user_data WHERE user_id = ?')
-    .bind(user.id).first();
-  return json({ data: row ? JSON.parse(row.data) : null, updatedAt: row ? row.updated_at : null }, 200, env, request);
+  const shared = await readShared(env);
+  return json(shared, 200, env, request);
 }
 
-async function handlePutData(env, request) {
+/** 追加記錄：任何登入的人都可以，只會新增，不會動到既有資料。
+ *  id 已經存在的就跳過（重送同一批不會變成兩筆）。 */
+async function handleAppendRecords(env, request) {
   const user = await getUserFromRequest(env, request);
   if (!user) return json({ error: '請先登入。' }, 401, env, request);
+  const body = await readJSON(request);
+  if (!body || !Array.isArray(body.records) || !body.records.length) {
+    return json({ error: '沒有要新增的記錄。' }, 400, env, request);
+  }
+  if (!body.records.every(validRecord)) {
+    return json({ error: '記錄格式不正確。' }, 400, env, request);
+  }
+  const shared = await readShared(env);
+  const data = shared.data && Array.isArray(shared.data.records)
+    ? shared.data
+    : { settings: (shared.data && shared.data.settings) || {}, records: [] };
+  const known = new Set(data.records.map(r => r.id));
+  const added = body.records.filter(r => !known.has(r.id));
+  if (!added.length) return json({ ...shared, added: 0 }, 200, env, request);
+  data.records = [...data.records, ...added];
+  const written = await writeShared(env, data);
+  if (!written) return json({ error: '資料量過大，無法同步。' }, 413, env, request);
+  return json({ data, rev: written.rev, updatedAt: written.updatedAt, added: added.length }, 200, env, request);
+}
+
+/** 整份覆寫（改、刪、設定）：只有管理員可以，而且要帶 baseRev。
+ *  baseRev 跟伺服器目前的版本對不上就回 409，附上最新資料讓前端重新載入。 */
+async function handlePutData(env, request) {
+  const { error } = await requireAdmin(env, request);
+  if (error) return error;
   const body = await readJSON(request);
   if (!body || typeof body !== 'object' || !Array.isArray(body.records) || typeof body.settings !== 'object') {
     return json({ error: '資料格式不正確，需要 { settings, records }。' }, 400, env, request);
   }
-  // 限制單一使用者的資料大小，避免異常資料把 D1 塞爆（每筆記錄約 200 bytes，
-  // 這裡抓一個相對寬鬆但足以擋住異常情況的上限）
-  const payload = JSON.stringify({ settings: body.settings, records: body.records });
-  if (payload.length > 8 * 1024 * 1024) {
-    return json({ error: '資料量過大，無法同步。' }, 413, env, request);
+  if (!body.records.every(validRecord)) {
+    return json({ error: '記錄格式不正確。' }, 400, env, request);
   }
-  const updatedAt = new Date().toISOString();
-  await env.DB.prepare(
-    `INSERT INTO user_data (user_id, data, updated_at) VALUES (?, ?, ?)
-     ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
-  ).bind(user.id, payload, updatedAt).run();
-  return json({ ok: true, updatedAt }, 200, env, request);
+  const shared = await readShared(env);
+  if (Number(body.baseRev) !== shared.rev) {
+    return json({
+      error: '資料已被其他人更新，請重新載入後再試一次。',
+      conflict: true, data: shared.data, rev: shared.rev,
+    }, 409, env, request);
+  }
+  const data = { settings: body.settings, records: body.records };
+  const written = await writeShared(env, data);
+  if (!written) return json({ error: '資料量過大，無法同步。' }, 413, env, request);
+  return json({ ok: true, rev: written.rev, updatedAt: written.updatedAt }, 200, env, request);
 }
 
 export default {
@@ -339,6 +402,7 @@ export default {
       if (pathname === '/api/me' && request.method === 'GET') return await handleMe(env, request);
       if (pathname === '/api/data' && request.method === 'GET') return await handleGetData(env, request);
       if (pathname === '/api/data' && request.method === 'PUT') return await handlePutData(env, request);
+      if (pathname === '/api/records' && request.method === 'POST') return await handleAppendRecords(env, request);
       if (pathname === '/api/users' && request.method === 'GET') return await handleListUsers(env, request);
       if (pathname === '/api/users' && request.method === 'POST') return await handleCreateUser(env, request);
       const userMatch = /^\/api\/users\/(\d+)$/.exec(pathname);

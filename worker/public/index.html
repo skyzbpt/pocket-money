@@ -359,7 +359,7 @@ body.locked #gate { display: flex; }
       <div class="gate-error" id="gate-error"></div>
       <button class="btn primary" type="submit" id="gate-submit">登入</button>
     </form>
-    <div class="gate-foot" id="gate-foot">登入後資料會自動跟雲端同步，換裝置登入同一組帳號就看得到同一份資料。</div>
+    <div class="gate-foot" id="gate-foot">全公司共用同一本帳，登入後就看得到大家記的紀錄，更動會自動同步。</div>
   </div>
 </div>
 
@@ -556,7 +556,7 @@ body.locked #gate { display: flex; }
         </div>
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px" id="sync-role-line"></div>
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">
-          每次記錄有更動都會自動同步，不需要手動按。
+          全公司共用同一本帳，每次更動都會自動同步，不需要手動按。
         </div>
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px" id="sync-status-line">已同步</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -1620,6 +1620,8 @@ const sync = {
   status: 'offline', // offline | syncing | synced | error
   errorMsg: '',
   pushTimer: null,
+  rev: 0,              // 共用帳本的版本號
+  serverIds: new Set(),// 伺服器上已經有的記錄 id（用來算出「我新增了哪幾筆」）
 };
 function syncConnected() { return !!sync.token; }
 
@@ -1658,6 +1660,7 @@ function persistSyncCreds() {
 }
 function clearSyncCreds() {
   sync.token = ''; sync.username = ''; sync.isAdmin = false;
+  sync.rev = 0; sync.serverIds = new Set();
   persistSyncCreds();
 }
 
@@ -1679,7 +1682,10 @@ async function syncRequest(path, options = {}) {
   try { body = await res.json(); } catch { /* 沒有 body（例如 204） */ }
   if (!res.ok) {
     if (res.status === 401) { clearSyncCreds(); }
-    throw new Error((body && body.error) || `伺服器錯誤（${res.status}）`);
+    const err = new Error((body && body.error) || `伺服器錯誤（${res.status}）`);
+    err.status = res.status;
+    err.body = body;
+    throw err;
   }
   return body;
 }
@@ -1746,24 +1752,39 @@ async function syncLogin(username, password) {
   await syncPullAndMerge();
 }
 
-/** 從伺服器拉資料：伺服器已經有資料就用它蓋掉本機；伺服器還沒有資料
- *  （第一次連線）就把目前本機資料當成第一份上傳上去。 */
+/** 把伺服器回來的共用帳本套用到本機。 */
+function applyServerData(body) {
+  sync.rev = Number(body.rev) || 0;
+  if (body.data && Array.isArray(body.data.records)) {
+    db = {
+      version: 1,
+      settings: { ...structuredClone(DEFAULT_DB.settings), ...(body.data.settings || {}) },
+      records: body.data.records.map(normalizeRecord).filter(Boolean),
+    };
+    sync.serverIds = new Set(db.records.map(r => r.id));
+    store.setQuiet(STORE_KEY, JSON.stringify(db));
+  }
+  if (editingId && !db.records.some(r => r.id === editingId)) exitEditMode();
+  render();
+}
+
+/** 從伺服器拉共用帳本。帳本還是空的時候，管理員會把目前本機資料當成
+ *  第一份上傳上去；員工則單純顯示空帳本。 */
 async function syncPullAndMerge() {
   sync.status = 'syncing'; syncRenderUI();
   try {
     const body = await syncRequest('/api/data', { method: 'GET' });
     if (body.data && Array.isArray(body.data.records)) {
-      db = {
-        version: 1,
-        settings: { ...structuredClone(DEFAULT_DB.settings), ...(body.data.settings || {}) },
-        records: body.data.records.map(normalizeRecord).filter(Boolean),
-      };
-      saveDB(false);
-      exitEditMode();
-      render();
+      applyServerData(body);
       sync.status = 'synced'; sync.errorMsg = '';
     } else {
-      await syncPush({ immediate: true });
+      sync.rev = Number(body.rev) || 0;
+      sync.serverIds = new Set();
+      if (canEditRecords() && db.records.length) {
+        await syncPush({ immediate: true });
+      } else {
+        sync.status = 'synced'; sync.errorMsg = '';
+      }
     }
   } catch (err) {
     sync.status = 'error'; sync.errorMsg = err.message;
@@ -1771,19 +1792,56 @@ async function syncPullAndMerge() {
   syncRenderUI();
 }
 
+/** 只在沒有待送變更、也不在同步中的時候，安靜地重新拉一次共用帳本，
+ *  讓大家看得到彼此剛記的帳。 */
+async function syncRefreshQuiet() {
+  if (!syncConnected() || sync.pushTimer || sync.status === 'syncing') return;
+  try {
+    const body = await syncRequest('/api/data', { method: 'GET' });
+    if (Number(body.rev) !== sync.rev) applyServerData(body);
+    sync.status = 'synced'; sync.errorMsg = '';
+  } catch { /* 拉不到就下次再說，不打擾使用者 */ }
+  syncRenderUI();
+}
+
+/** 送出本機的變更。
+ *  一般員工：只追加自己新記的那幾筆（POST /api/records），永遠不會蓋掉別人。
+ *  管理員：整份覆寫（PUT /api/data）並帶版本號，版本對不上就重新載入。 */
 function syncPush({ immediate = false, keepalive = false } = {}) {
   if (!syncConnected()) return Promise.resolve();
   if (sync.pushTimer) { clearTimeout(sync.pushTimer); sync.pushTimer = null; }
   const doPush = async () => {
     sync.status = 'syncing'; syncRenderUI();
     try {
-      await syncRequest('/api/data', {
-        method: 'PUT',
-        keepalive,
-        body: JSON.stringify({ settings: db.settings, records: db.records }),
-      });
+      if (canEditRecords()) {
+        const body = await syncRequest('/api/data', {
+          method: 'PUT',
+          keepalive,
+          body: JSON.stringify({ settings: db.settings, records: db.records, baseRev: sync.rev }),
+        });
+        sync.rev = Number(body.rev) || sync.rev;
+        sync.serverIds = new Set(db.records.map(r => r.id));
+      } else {
+        const added = db.records.filter(r => !sync.serverIds.has(r.id));
+        if (added.length) {
+          const body = await syncRequest('/api/records', {
+            method: 'POST',
+            keepalive,
+            body: JSON.stringify({ records: added }),
+          });
+          applyServerData(body);
+        }
+      }
       sync.status = 'synced'; sync.errorMsg = '';
     } catch (err) {
+      if (err.status === 409 && err.body && err.body.data) {
+        // 別人先寫進去了：以伺服器的版本為準重新載入，請使用者再操作一次
+        applyServerData(err.body);
+        sync.status = 'synced'; sync.errorMsg = '';
+        syncRenderUI();
+        alert('這份帳本已被其他人更新，畫面已重新載入最新資料。剛剛那個動作請再做一次。');
+        return;
+      }
       sync.status = 'error'; sync.errorMsg = err.message;
     }
     syncRenderUI();
@@ -1800,7 +1858,7 @@ async function syncLogout() {
   syncRequest('/api/logout', { method: 'POST' }).catch(() => { /* 伺服器端 session 過期也沒關係 */ });
   clearSyncCreds();
   sync.status = 'offline';
-  // 登出後不留資料在這台裝置：雲端才是本體，下次登入會重新拉下來
+  // 登出後不留資料在這台裝置：共用帳本在雲端，下次登入會重新拉下來
   db = structuredClone(DEFAULT_DB);
   store.setQuiet(STORE_KEY, JSON.stringify(db));
   exitEditMode();
@@ -1952,7 +2010,7 @@ async function adminSetRole(u, nextIsAdmin) {
 }
 
 async function adminDeleteUser(u) {
-  if (!confirm(`確定要刪除帳號「${u.username}」嗎？該帳號在雲端的資料也會一起刪除，無法復原。`)) return;
+  if (!confirm(`確定要刪除帳號「${u.username}」嗎？此帳號將無法再登入；帳本是大家共用的，記錄不會被刪除。`)) return;
   try {
     await syncRequest(`/api/users/${u.id}`, { method: 'DELETE' });
     adminShowError('');
@@ -2015,7 +2073,13 @@ function syncFlushPending() {
 addEventListener('pagehide', syncFlushPending);
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') syncFlushPending();
+  else syncRefreshQuiet();
 });
+addEventListener('focus', syncRefreshQuiet);
+// 帳本是大家共用的，開著不動也每分鐘看一次有沒有人記了新的帳
+setInterval(() => {
+  if (document.visibilityState === 'visible') syncRefreshQuiet();
+}, 60000);
 
 async function syncInit() {
   syncRenderUI();
