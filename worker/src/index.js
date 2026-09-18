@@ -17,7 +17,7 @@
  *   GET    /api/data       (需要登入) -> { data } 或 { data: null }
  *   PUT    /api/data       (需要登入) body: 完整的 { settings, records }
  *   GET    /api/users      (需要管理員) -> { users: [...] }
- *   POST   /api/users      (需要管理員) { username, password, isAdmin } -> 建立帳號
+ *   POST   /api/users      (需要管理員) { username, password } -> 建立帳號（一律非管理員）
  *   PATCH  /api/users/:id  (需要管理員) { password?, isAdmin? } -> 改密碼／改權限
  *   DELETE /api/users/:id  (需要管理員) -> 刪除帳號（連同它的資料）
  */
@@ -188,12 +188,13 @@ async function handleCreateUser(env, request) {
 
   const salt = randomHex(16);
   const hash = await hashPassword(body.password, salt);
+  // 新帳號一律是一般使用者；要給管理員權限請建立後再用 PATCH 調整
   const inserted = await env.DB.prepare(
-    'INSERT INTO users (username, password_hash, salt, is_admin) VALUES (?, ?, ?, ?) RETURNING id, created_at',
-  ).bind(username, hash, salt, body.isAdmin ? 1 : 0).first();
+    'INSERT INTO users (username, password_hash, salt, is_admin) VALUES (?, ?, ?, 0) RETURNING id, created_at',
+  ).bind(username, hash, salt).first();
 
   return json({
-    user: { id: inserted.id, username, isAdmin: !!body.isAdmin, createdAt: inserted.created_at },
+    user: { id: inserted.id, username, isAdmin: false, createdAt: inserted.created_at },
   }, 201, env, request);
 }
 
