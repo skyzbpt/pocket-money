@@ -280,6 +280,18 @@ tbody tr:hover { background: var(--hover); }
 .list-editor .count { font-size: 11px; color: var(--text-muted); margin-left: 6px; font-weight: 400; }
 .danger-zone { border-top: 1px solid var(--border); padding-top: 16px; }
 
+/* ── 帳號管理（僅管理員看得到） ──────────────────────────────────── */
+.user-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 0; border-bottom: 1px dashed var(--border);
+}
+.user-row .name { font-size: 13px; font-weight: 600; }
+.user-row .tag {
+  font-size: 11px; padding: 1px 6px; border-radius: 999px;
+  background: var(--surface-2); color: var(--text-muted);
+}
+.user-row .acts { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+
 /* ── 提示氣泡 ───────────────────────────────────────────────────────── */
 #tip {
   position: fixed; z-index: 60; pointer-events: none; opacity: 0;
@@ -495,11 +507,8 @@ tbody tr:hover { background: var(--hover); }
 
       <div id="sync-setup">
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
-          用同一組帳號密碼在不同裝置登入，資料就會同步。
-        </div>
-        <div id="sync-tabs" class="type-toggle" role="group" aria-label="登入或註冊" style="margin-bottom:10px;max-width:220px">
-          <button type="button" id="sync-tab-login" aria-pressed="true">登入</button>
-          <button type="button" id="sync-tab-register" aria-pressed="false">建立帳號</button>
+          用同一組帳號密碼在不同裝置登入，資料就會同步。<br>
+          帳號密碼由管理員建立與修改，無法自行註冊。
         </div>
         <form id="sync-form">
           <label class="field" style="margin-bottom:8px">
@@ -519,12 +528,37 @@ tbody tr:hover { background: var(--hover); }
         <div style="font-size:13px;margin-bottom:4px">
           已登入：<strong id="sync-username-display"></strong>
         </div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px" id="sync-role-line"></div>
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px" id="sync-status-line">已同步</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn small" id="btn-sync-now">立即同步</button>
           <button class="btn small ghost" id="btn-sync-logout">登出</button>
         </div>
       </div>
+    </div>
+
+    <div class="list-editor" id="admin-box" style="margin-bottom:26px;display:none">
+      <h3>帳號管理（管理員）</h3>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">
+        只有管理員能建立帳號、重設密碼與調整權限。
+      </div>
+      <div id="admin-users"></div>
+      <div id="admin-error" style="display:none;font-size:12px;color:var(--critical);margin:8px 0"></div>
+      <form id="admin-create-form" style="margin-top:12px">
+        <label class="field" style="margin-bottom:8px">
+          <span>新帳號</span>
+          <input type="text" id="admin-new-username" autocomplete="off" required>
+        </label>
+        <label class="field" style="margin-bottom:8px">
+          <span>新密碼（至少 6 個字元）</span>
+          <input type="text" id="admin-new-password" autocomplete="off" required minlength="6">
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:8px">
+          <input type="checkbox" id="admin-new-isadmin">
+          <span>給予管理員權限</span>
+        </label>
+        <button class="btn small primary" type="submit" id="admin-create-submit">建立帳號</button>
+      </form>
     </div>
 
     <div class="list-editor" style="margin-bottom:26px">
@@ -1286,6 +1320,7 @@ const drawer = $('#drawer'), backdrop = $('#drawer-backdrop');
 function openDrawer() {
   renderSettings();
   syncRenderUI();
+  if (syncConnected() && sync.isAdmin) adminLoadUsers();
   drawer.classList.add('open'); backdrop.classList.add('open');
   // 雲端同步區塊加進來後 #s-opening 不再是抽屜第一個欄位，
   // 對焦它會把畫面捲走，所以對焦後強制把抽屜捲回最上面
@@ -1524,43 +1559,42 @@ $('#btn-clear').addEventListener('click', () => {
 
 /* ══════════════════════════════════════════════════════════════════════
    雲端同步（Cloudflare Workers + D1，見 worker/ 目錄）
-   帳號登入後，整份 { settings, records } 會跟伺服器同步；沒有設定伺服器
-   網址或還沒登入時，app 的行為跟純本機版完全一樣。
+   帳號登入後，整份 { settings, records } 會跟伺服器同步；還沒登入時，
+   app 的行為跟純本機版完全一樣。
    ══════════════════════════════════════════════════════════════════════ */
-/* 同步伺服器網址。使用者不需要（也無法）自己設定，直接登入即可。
-   空字串代表「跟前端同一個網域」（same-origin，呼叫 /api/... 相對路徑），
-   由 pages/_worker.js 把 /api/* 轉給 Worker。
-   自己另外部署一套的人，改這個常數即可。 */
-const DEFAULT_API_BASE = '';
+/* API 一律打同網域的相對路徑 /api/...（前端跟 Worker 由同一個 Worker 托管），
+   沒有、也不提供任何「自訂伺服器網址」的設定。
+   舊版可能在 localStorage 留下自訂網址，載入時直接清掉。 */
+try { localStorage.removeItem('pocket-money-sync-api'); } catch { /* 忽略 */ }
 
-const SYNC_API_KEY = 'pocket-money-sync-api';
 const SYNC_TOKEN_KEY = 'pocket-money-sync-token';
 const SYNC_USER_KEY = 'pocket-money-sync-user';
+const SYNC_ADMIN_KEY = 'pocket-money-sync-admin';
 const SYNC_PUSH_DELAY = 800;
 
 const sync = {
-  apiBase: store.get(SYNC_API_KEY) ?? DEFAULT_API_BASE,
   token: store.get(SYNC_TOKEN_KEY) || '',
   username: store.get(SYNC_USER_KEY) || '',
+  isAdmin: store.get(SYNC_ADMIN_KEY) === '1',
   status: 'offline', // offline | syncing | synced | error
   errorMsg: '',
   pushTimer: null,
 };
 function syncConnected() { return !!sync.token; }
 function persistSyncCreds() {
-  store.setQuiet(SYNC_API_KEY, sync.apiBase);
   store.setQuiet(SYNC_TOKEN_KEY, sync.token);
   store.setQuiet(SYNC_USER_KEY, sync.username);
+  store.setQuiet(SYNC_ADMIN_KEY, sync.isAdmin ? '1' : '0');
 }
 function clearSyncCreds() {
-  sync.token = ''; sync.username = '';
+  sync.token = ''; sync.username = ''; sync.isAdmin = false;
   persistSyncCreds();
 }
 
 async function syncRequest(path, options = {}) {
   let res;
   try {
-    res = await fetch(sync.apiBase.replace(/\/+$/, '') + path, {
+    res = await fetch(path, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -1580,14 +1614,15 @@ async function syncRequest(path, options = {}) {
   return body;
 }
 
-async function syncLogin(username, password, isRegister) {
-  sync.apiBase = DEFAULT_API_BASE;
-  const body = await syncRequest(isRegister ? '/api/register' : '/api/login', {
+/* 帳號一律由管理員建立，前端只有「登入」。 */
+async function syncLogin(username, password) {
+  const body = await syncRequest('/api/login', {
     method: 'POST',
     body: JSON.stringify({ username, password }),
   });
   sync.token = body.token;
   sync.username = body.username;
+  sync.isAdmin = !!body.isAdmin;
   persistSyncCreds();
   await syncPullAndMerge();
 }
@@ -1652,17 +1687,19 @@ function syncRenderUI() {
   $('#sync-connected').style.display = connected ? '' : 'none';
   if (connected) {
     $('#sync-username-display').textContent = sync.username;
+    $('#sync-role-line').textContent = sync.isAdmin ? '身分：管理員（可管理帳號）' : '身分：一般使用者';
     const line = $('#sync-status-line');
     if (sync.status === 'syncing') line.textContent = '同步中…';
     else if (sync.status === 'error') line.textContent = '同步失敗：' + sync.errorMsg;
     else line.textContent = '已同步';
     line.style.color = sync.status === 'error' ? 'var(--critical)' : 'var(--text-muted)';
   }
+  adminRenderBox();
   syncRenderTopbarPill();
 }
 function syncRenderTopbarPill() {
   const pill = $('#sync-pill');
-  // 沒登入過就不顯示這個標籤（apiBase 可能是空字串＝same-origin，不能拿來判斷）
+  // 沒登入過就不顯示這個標籤
   if (!syncConnected() && !sync.username) { pill.hidden = true; return; }
   pill.hidden = false;
   const label = { syncing: '同步中', synced: '已同步', error: '同步失敗', offline: '未登入' }[sync.status] || '未登入';
@@ -1671,32 +1708,165 @@ function syncRenderTopbarPill() {
 }
 $('#sync-pill').addEventListener('click', openDrawer);
 
-$('#sync-tab-login').addEventListener('click', () => {
-  $('#sync-tab-login').setAttribute('aria-pressed', 'true');
-  $('#sync-tab-register').setAttribute('aria-pressed', 'false');
-  $('#sync-submit').textContent = '登入';
-  $('#sync-submit').dataset.mode = 'login';
+/* ══════════════════════════════════════════════════════════════════════
+   帳號管理（只有管理員看得到、也只有管理員的 token 呼得動這些 API）
+   ══════════════════════════════════════════════════════════════════════ */
+function adminShowError(msg) {
+  const box = $('#admin-error');
+  if (!msg) { box.style.display = 'none'; box.textContent = ''; return; }
+  box.textContent = msg;
+  box.style.display = '';
+  box.scrollIntoView({ block: 'nearest' });
+}
+
+function adminRenderBox() {
+  const box = $('#admin-box');
+  const show = syncConnected() && sync.isAdmin;
+  box.style.display = show ? '' : 'none';
+  if (!show) { $('#admin-users').innerHTML = ''; adminShowError(''); }
+}
+
+async function adminLoadUsers() {
+  try {
+    const body = await syncRequest('/api/users', { method: 'GET' });
+    adminShowError('');
+    adminRenderUsers(body.users || []);
+  } catch (err) {
+    adminShowError(err.message);
+  }
+}
+
+function adminRenderUsers(users) {
+  const wrap = $('#admin-users');
+  wrap.innerHTML = '';
+  users.forEach(u => {
+    const isSelf = u.username === sync.username;
+    const row = document.createElement('div');
+    row.className = 'user-row';
+
+    const name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = u.username;
+    row.appendChild(name);
+
+    if (u.isAdmin) {
+      const tag = document.createElement('span');
+      tag.className = 'tag';
+      tag.textContent = '管理員';
+      row.appendChild(tag);
+    }
+    if (isSelf) {
+      const me = document.createElement('span');
+      me.className = 'tag';
+      me.textContent = '目前登入';
+      row.appendChild(me);
+    }
+
+    const acts = document.createElement('div');
+    acts.className = 'acts';
+
+    const pwBtn = document.createElement('button');
+    pwBtn.className = 'btn small';
+    pwBtn.type = 'button';
+    pwBtn.textContent = '改密碼';
+    pwBtn.addEventListener('click', () => adminChangePassword(u, isSelf));
+    acts.appendChild(pwBtn);
+
+    if (!isSelf) {
+      const roleBtn = document.createElement('button');
+      roleBtn.className = 'btn small';
+      roleBtn.type = 'button';
+      roleBtn.textContent = u.isAdmin ? '取消管理員' : '設為管理員';
+      roleBtn.addEventListener('click', () => adminSetRole(u, !u.isAdmin));
+      acts.appendChild(roleBtn);
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn small danger';
+      delBtn.type = 'button';
+      delBtn.textContent = '刪除';
+      delBtn.addEventListener('click', () => adminDeleteUser(u));
+      acts.appendChild(delBtn);
+    }
+
+    row.appendChild(acts);
+    wrap.appendChild(row);
+  });
+}
+
+async function adminChangePassword(u, isSelf) {
+  const pw = prompt(`幫「${u.username}」設定新密碼（至少 6 個字元）：`);
+  if (pw === null) return;
+  if (pw.length < 6) { alert('密碼至少 6 個字元。'); return; }
+  try {
+    await syncRequest(`/api/users/${u.id}`, { method: 'PATCH', body: JSON.stringify({ password: pw }) });
+    adminShowError('');
+    // 改密碼會讓該帳號所有裝置重新登入；改到自己就直接登出
+    if (isSelf) { clearSyncCreds(); sync.status = 'offline'; syncRenderUI(); alert('密碼已更新，請用新密碼重新登入。'); return; }
+    alert(`「${u.username}」的密碼已更新，該帳號需要重新登入。`);
+    adminLoadUsers();
+  } catch (err) {
+    adminShowError(err.message);
+  }
+}
+
+async function adminSetRole(u, nextIsAdmin) {
+  const label = nextIsAdmin ? '設為管理員' : '取消管理員權限';
+  if (!confirm(`確定要把「${u.username}」${label}嗎？`)) return;
+  try {
+    await syncRequest(`/api/users/${u.id}`, { method: 'PATCH', body: JSON.stringify({ isAdmin: nextIsAdmin }) });
+    adminShowError('');
+    adminLoadUsers();
+  } catch (err) {
+    adminShowError(err.message);
+  }
+}
+
+async function adminDeleteUser(u) {
+  if (!confirm(`確定要刪除帳號「${u.username}」嗎？該帳號在雲端的資料也會一起刪除，無法復原。`)) return;
+  try {
+    await syncRequest(`/api/users/${u.id}`, { method: 'DELETE' });
+    adminShowError('');
+    adminLoadUsers();
+  } catch (err) {
+    adminShowError(err.message);
+  }
+}
+
+$('#admin-create-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const username = $('#admin-new-username').value.trim();
+  const password = $('#admin-new-password').value;
+  const isAdmin = $('#admin-new-isadmin').checked;
+  const btn = $('#admin-create-submit');
+  btn.disabled = true;
+  const original = btn.textContent;
+  btn.textContent = '建立中…';
+  try {
+    await syncRequest('/api/users', { method: 'POST', body: JSON.stringify({ username, password, isAdmin }) });
+    adminShowError('');
+    $('#admin-new-username').value = '';
+    $('#admin-new-password').value = '';
+    $('#admin-new-isadmin').checked = false;
+    adminLoadUsers();
+  } catch (err) {
+    adminShowError(err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
 });
-$('#sync-tab-register').addEventListener('click', () => {
-  $('#sync-tab-login').setAttribute('aria-pressed', 'false');
-  $('#sync-tab-register').setAttribute('aria-pressed', 'true');
-  $('#sync-submit').textContent = '建立帳號並登入';
-  $('#sync-submit').dataset.mode = 'register';
-});
-$('#sync-submit').dataset.mode = 'login';
 
 $('#sync-form').addEventListener('submit', async e => {
   e.preventDefault();
   const username = $('#sync-username').value.trim();
   const password = $('#sync-password').value;
-  const isRegister = $('#sync-submit').dataset.mode === 'register';
   const errBox = $('#sync-error'), submitBtn = $('#sync-submit');
   errBox.style.display = 'none';
   submitBtn.disabled = true;
   const original = submitBtn.textContent;
-  submitBtn.textContent = isRegister ? '建立中…' : '登入中…';
+  submitBtn.textContent = '登入中…';
   try {
-    await syncLogin(username, password, isRegister);
+    await syncLogin(username, password);
     $('#sync-password').value = '';
     syncRenderUI();
   } catch (err) {
@@ -1714,9 +1884,21 @@ $('#btn-sync-logout').addEventListener('click', () => {
   if (confirm('登出後這台裝置會停止跟雲端同步，本機資料仍會保留。確定登出？')) syncLogout();
 });
 
+/** 跟伺服器確認目前身分（管理員權限可能被別的管理員改掉了）。 */
+async function syncRefreshRole() {
+  if (!syncConnected()) return;
+  try {
+    const body = await syncRequest('/api/me', { method: 'GET' });
+    sync.isAdmin = !!body.isAdmin;
+    sync.username = body.username;
+    persistSyncCreds();
+    syncRenderUI();
+  } catch { /* 連不上或 session 過期時維持現狀，同步流程會再處理 */ }
+}
+
 function syncInit() {
   syncRenderUI();
-  if (syncConnected()) syncPullAndMerge();
+  if (syncConnected()) { syncRefreshRole(); syncPullAndMerge(); }
 }
 
 /* ══════════════════════════════════════════════════════════════════════

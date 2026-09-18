@@ -9,8 +9,19 @@ CREATE TABLE IF NOT EXISTS users (
   username TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   salt TEXT NOT NULL,
+  -- 1 = 管理員：只有管理員能新增帳號、改別人的密碼、給或收回管理員權限
+  is_admin INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- 舊資料庫升級用（已經有 users 表、但還沒有 is_admin 欄位時執行一次）：
+--   npx wrangler d1 execute pocket-money-db --remote \
+--     --command "ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0"
+-- 指定第一位管理員：
+--   npx wrangler d1 execute pocket-money-db --remote \
+--     --command "UPDATE users SET is_admin = 1 WHERE username = '你的帳號'"
+-- 若資料庫裡還沒有任何管理員，API 會暫時把「最早建立的帳號」視為管理員，
+-- 讓你不會被鎖在外面；設好之後建議照上面指令明確指定。
 
 CREATE TABLE IF NOT EXISTS sessions (
   token TEXT PRIMARY KEY,

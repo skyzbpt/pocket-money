@@ -1,11 +1,12 @@
 {
   "name": "guoding",
   "private": true,
+  "type": "module",
   "version": "1.0.0",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "test": "node cors-test.mjs"
+    "test": "node cors-test.mjs && node admin-test.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"

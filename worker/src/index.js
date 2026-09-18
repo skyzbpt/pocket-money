@@ -8,12 +8,18 @@
  * 存檔方式是整份覆蓋（last write wins），跟 app 原本「匯出/匯入備份」
  * 是同一種資料格式。
  *
+ * 帳號一律由管理員建立與維護：沒有公開註冊，使用者也不能自己改密碼。
+ *
  * 路由：
- *   POST /api/register   { username, password } -> { token, username }
- *   POST /api/login      { username, password } -> { token, username }
- *   POST /api/logout     (需要 Authorization: Bearer <token>)
- *   GET  /api/data        (需要 Authorization: Bearer <token>) -> { data } 或 { data: null }
- *   PUT  /api/data        (需要 Authorization: Bearer <token>) body: 完整的 { settings, records }
+ *   POST   /api/login      { username, password } -> { token, username, isAdmin }
+ *   POST   /api/logout     (需要 Authorization: Bearer <token>)
+ *   GET    /api/me         (需要登入) -> { username, isAdmin }
+ *   GET    /api/data       (需要登入) -> { data } 或 { data: null }
+ *   PUT    /api/data       (需要登入) body: 完整的 { settings, records }
+ *   GET    /api/users      (需要管理員) -> { users: [...] }
+ *   POST   /api/users      (需要管理員) { username, password, isAdmin } -> 建立帳號
+ *   PATCH  /api/users/:id  (需要管理員) { password?, isAdmin? } -> 改密碼／改權限
+ *   DELETE /api/users/:id  (需要管理員) -> 刪除帳號（連同它的資料）
  */
 
 const SESSION_DAYS = 30;
@@ -46,7 +52,7 @@ function resolveOrigin(env, request) {
 function corsHeaders(env, request) {
   const allowed = resolveOrigin(env, request);
   const headers = {
-    'Access-Control-Allow-Methods': 'GET,POST,PUT,OPTIONS',
+    'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '86400',
     // 回應會隨 Origin 不同而不同，不加這個會被快取汙染
@@ -115,16 +121,63 @@ async function getUserFromRequest(env, request) {
   if (!m) return null;
   const token = m[1].trim();
   const row = await env.DB.prepare(
-    `SELECT users.id AS id, users.username AS username, sessions.expires_at AS expires_at
+    `SELECT users.id AS id, users.username AS username, users.is_admin AS is_admin,
+            sessions.expires_at AS expires_at
      FROM sessions JOIN users ON users.id = sessions.user_id
      WHERE sessions.token = ?`,
   ).bind(token).first();
   if (!row) return null;
   if (new Date(row.expires_at).getTime() < Date.now()) return null;
-  return { id: row.id, username: row.username, token };
+  return { id: row.id, username: row.username, isAdmin: !!row.is_admin, token };
 }
 
-async function handleRegister(env, request) {
+/** 資料庫裡目前有沒有任何管理員。 */
+async function hasAnyAdmin(env) {
+  const row = await env.DB.prepare('SELECT id FROM users WHERE is_admin = 1 LIMIT 1').first();
+  return !!row;
+}
+
+/** 實際上算不算管理員。
+ *  若資料庫還沒有任何管理員（例如舊資料庫剛加上 is_admin 欄位），
+ *  暫時把「最早建立的帳號」視為管理員，避免沒有人能管理帳號。 */
+async function isAdminUser(env, user) {
+  if (!user) return false;
+  if (user.isAdmin) return true;
+  if (await hasAnyAdmin(env)) return false;
+  const first = await env.DB.prepare('SELECT id FROM users ORDER BY id ASC LIMIT 1').first();
+  return !!first && first.id === user.id;
+}
+
+/** 取出登入中的管理員；不是管理員就回傳對應的錯誤 Response。 */
+async function requireAdmin(env, request) {
+  const user = await getUserFromRequest(env, request);
+  if (!user) return { error: json({ error: '請先登入。' }, 401, env, request) };
+  if (!(await isAdminUser(env, user))) {
+    return { error: json({ error: '只有管理員可以管理帳號。' }, 403, env, request) };
+  }
+  return { user };
+}
+
+async function handleListUsers(env, request) {
+  const { error } = await requireAdmin(env, request);
+  if (error) return error;
+  const { results } = await env.DB.prepare(
+    'SELECT id, username, is_admin, created_at FROM users ORDER BY id ASC',
+  ).all();
+  const anyAdmin = await hasAnyAdmin(env);
+  const users = (results || []).map((r, i) => ({
+    id: r.id,
+    username: r.username,
+    // 還沒有任何管理員時，最早建立的帳號會被暫時視為管理員（見 isAdminUser）
+    isAdmin: !!r.is_admin || (!anyAdmin && i === 0),
+    createdAt: r.created_at,
+  }));
+  return json({ users }, 200, env, request);
+}
+
+async function handleCreateUser(env, request) {
+  const { error } = await requireAdmin(env, request);
+  if (error) return error;
   const body = await readJSON(request);
   if (!body || !isValidUsername(body.username) || !isValidPassword(body.password)) {
     return json({ error: '帳號需 3-40 個字元；密碼至少 6 個字元。' }, 400, env, request);
@@ -136,11 +189,72 @@ async function handleRegister(env, request) {
   const salt = randomHex(16);
   const hash = await hashPassword(body.password, salt);
   const inserted = await env.DB.prepare(
-    'INSERT INTO users (username, password_hash, salt) VALUES (?, ?, ?) RETURNING id',
-  ).bind(username, hash, salt).first();
+    'INSERT INTO users (username, password_hash, salt, is_admin) VALUES (?, ?, ?, ?) RETURNING id, created_at',
+  ).bind(username, hash, salt, body.isAdmin ? 1 : 0).first();
 
-  const token = await createSession(env, inserted.id);
-  return json({ token, username }, 201, env, request);
+  return json({
+    user: { id: inserted.id, username, isAdmin: !!body.isAdmin, createdAt: inserted.created_at },
+  }, 201, env, request);
+}
+
+/** 改密碼或改管理員權限。兩個欄位都是選填，有帶才改。 */
+async function handleUpdateUser(env, request, targetId) {
+  const { user: admin, error } = await requireAdmin(env, request);
+  if (error) return error;
+  const target = await env.DB.prepare('SELECT id, username, is_admin FROM users WHERE id = ?')
+    .bind(targetId).first();
+  if (!target) return json({ error: '找不到這個帳號。' }, 404, env, request);
+
+  const body = await readJSON(request);
+  if (!body || (body.password === undefined && body.isAdmin === undefined)) {
+    return json({ error: '沒有要修改的內容。' }, 400, env, request);
+  }
+
+  if (body.password !== undefined) {
+    if (!isValidPassword(body.password)) {
+      return json({ error: '密碼至少 6 個字元。' }, 400, env, request);
+    }
+    const salt = randomHex(16);
+    const hash = await hashPassword(body.password, salt);
+    await env.DB.prepare('UPDATE users SET password_hash = ?, salt = ? WHERE id = ?')
+      .bind(hash, salt, target.id).run();
+    // 改完密碼就把這個帳號其他裝置上的登入狀態清掉
+    await env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(target.id).run();
+  }
+
+  if (body.isAdmin !== undefined) {
+    const nextIsAdmin = body.isAdmin ? 1 : 0;
+    // 不讓管理員把自己降級，也不讓最後一位管理員消失（否則沒人能管帳號）
+    if (!nextIsAdmin && target.id === admin.id) {
+      return json({ error: '不能移除自己的管理員權限。' }, 400, env, request);
+    }
+    if (!nextIsAdmin && target.is_admin) {
+      const row = await env.DB.prepare('SELECT COUNT(*) AS n FROM users WHERE is_admin = 1').first();
+      if (Number(row.n) <= 1) {
+        return json({ error: '至少要保留一位管理員。' }, 400, env, request);
+      }
+    }
+    await env.DB.prepare('UPDATE users SET is_admin = ? WHERE id = ?').bind(nextIsAdmin, target.id).run();
+  }
+
+  return json({ ok: true }, 200, env, request);
+}
+
+async function handleDeleteUser(env, request, targetId) {
+  const { user: admin, error } = await requireAdmin(env, request);
+  if (error) return error;
+  if (targetId === admin.id) return json({ error: '不能刪除自己的帳號。' }, 400, env, request);
+  const target = await env.DB.prepare('SELECT id, is_admin FROM users WHERE id = ?').bind(targetId).first();
+  if (!target) return json({ error: '找不到這個帳號。' }, 404, env, request);
+  if (target.is_admin) {
+    const row = await env.DB.prepare('SELECT COUNT(*) AS n FROM users WHERE is_admin = 1').first();
+    if (Number(row.n) <= 1) return json({ error: '至少要保留一位管理員。' }, 400, env, request);
+  }
+  // D1 預設沒開 foreign key cascade，這裡自己把附屬資料清乾淨
+  await env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(target.id).run();
+  await env.DB.prepare('DELETE FROM user_data WHERE user_id = ?').bind(target.id).run();
+  await env.DB.prepare('DELETE FROM users WHERE id = ?').bind(target.id).run();
+  return json({ ok: true }, 200, env, request);
 }
 
 async function handleLogin(env, request) {
@@ -149,8 +263,9 @@ async function handleLogin(env, request) {
     return json({ error: '請輸入帳號密碼。' }, 400, env, request);
   }
   const username = body.username.trim();
-  const user = await env.DB.prepare('SELECT id, username, password_hash, salt FROM users WHERE username = ?')
-    .bind(username).first();
+  const user = await env.DB.prepare(
+    'SELECT id, username, password_hash, salt, is_admin FROM users WHERE username = ?',
+  ).bind(username).first();
   if (!user) return json({ error: '帳號或密碼錯誤。' }, 401, env, request);
 
   const hash = await hashPassword(body.password, user.salt);
@@ -158,7 +273,14 @@ async function handleLogin(env, request) {
     return json({ error: '帳號或密碼錯誤。' }, 401, env, request);
   }
   const token = await createSession(env, user.id);
-  return json({ token, username: user.username }, 200, env, request);
+  const isAdmin = await isAdminUser(env, { id: user.id, isAdmin: !!user.is_admin });
+  return json({ token, username: user.username, isAdmin }, 200, env, request);
+}
+
+async function handleMe(env, request) {
+  const user = await getUserFromRequest(env, request);
+  if (!user) return json({ error: '請先登入。' }, 401, env, request);
+  return json({ username: user.username, isAdmin: await isAdminUser(env, user) }, 200, env, request);
 }
 
 async function handleLogout(env, request) {
@@ -211,11 +333,23 @@ export default {
     }
 
     try {
-      if (pathname === '/api/register' && request.method === 'POST') return await handleRegister(env, request);
       if (pathname === '/api/login' && request.method === 'POST') return await handleLogin(env, request);
       if (pathname === '/api/logout' && request.method === 'POST') return await handleLogout(env, request);
+      if (pathname === '/api/me' && request.method === 'GET') return await handleMe(env, request);
       if (pathname === '/api/data' && request.method === 'GET') return await handleGetData(env, request);
       if (pathname === '/api/data' && request.method === 'PUT') return await handlePutData(env, request);
+      if (pathname === '/api/users' && request.method === 'GET') return await handleListUsers(env, request);
+      if (pathname === '/api/users' && request.method === 'POST') return await handleCreateUser(env, request);
+      const userMatch = /^\/api\/users\/(\d+)$/.exec(pathname);
+      if (userMatch) {
+        const id = Number(userMatch[1]);
+        if (request.method === 'PATCH') return await handleUpdateUser(env, request, id);
+        if (request.method === 'DELETE') return await handleDeleteUser(env, request, id);
+      }
+      // 已移除公開註冊：帳號只能由管理員建立
+      if (pathname === '/api/register') {
+        return json({ error: '帳號請由管理員建立。' }, 403, env, request);
+      }
       // '/' 不會走到這裡：靜態檔案（public/index.html）會先被比對到
       if (pathname === '/api') {
         return json({ ok: true, service: 'guoding' }, 200, env, request);
