@@ -25,3 +25,14 @@ if (/https?:\/\/[^'"\s]*workers\.dev/.test(m[1])) {
   process.exit(1);
 }
 console.log('PASS  前端 API 一律走同源相對路徑');
+
+// 帳號只能由管理員建立：前端不該還留著註冊入口
+if (/\/api\/register/.test(html)) {
+  console.error('FAIL  前端仍有註冊（/api/register）的呼叫');
+  process.exit(1);
+}
+if (/id="sync-tab-register"/.test(html)) {
+  console.error('FAIL  前端仍有「建立帳號」分頁');
+  process.exit(1);
+}
+console.log('PASS  前端沒有公開註冊入口');
