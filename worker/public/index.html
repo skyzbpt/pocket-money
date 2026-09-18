@@ -1524,22 +1524,19 @@ $('#btn-clear').addEventListener('click', () => {
 
 /* ══════════════════════════════════════════════════════════════════════
    雲端同步（Cloudflare Workers + D1，見 worker/ 目錄）
-   帳號登入後，整份 { settings, records } 會跟伺服器同步；沒有設定伺服器
-   網址或還沒登入時，app 的行為跟純本機版完全一樣。
+   帳號登入後，整份 { settings, records } 會跟伺服器同步；還沒登入時，
+   app 的行為跟純本機版完全一樣。
    ══════════════════════════════════════════════════════════════════════ */
-/* 同步伺服器網址。使用者不需要（也無法）自己設定，直接登入即可。
-   空字串代表「跟前端同一個網域」（same-origin，呼叫 /api/... 相對路徑），
-   由 pages/_worker.js 把 /api/* 轉給 Worker。
-   自己另外部署一套的人，改這個常數即可。 */
-const DEFAULT_API_BASE = '';
+/* API 一律打同網域的相對路徑 /api/...（前端跟 Worker 由同一個 Worker 托管），
+   沒有、也不提供任何「自訂伺服器網址」的設定。
+   舊版可能在 localStorage 留下自訂網址，載入時直接清掉。 */
+try { localStorage.removeItem('pocket-money-sync-api'); } catch { /* 忽略 */ }
 
-const SYNC_API_KEY = 'pocket-money-sync-api';
 const SYNC_TOKEN_KEY = 'pocket-money-sync-token';
 const SYNC_USER_KEY = 'pocket-money-sync-user';
 const SYNC_PUSH_DELAY = 800;
 
 const sync = {
-  apiBase: store.get(SYNC_API_KEY) ?? DEFAULT_API_BASE,
   token: store.get(SYNC_TOKEN_KEY) || '',
   username: store.get(SYNC_USER_KEY) || '',
   status: 'offline', // offline | syncing | synced | error
@@ -1548,7 +1545,6 @@ const sync = {
 };
 function syncConnected() { return !!sync.token; }
 function persistSyncCreds() {
-  store.setQuiet(SYNC_API_KEY, sync.apiBase);
   store.setQuiet(SYNC_TOKEN_KEY, sync.token);
   store.setQuiet(SYNC_USER_KEY, sync.username);
 }
@@ -1560,7 +1556,7 @@ function clearSyncCreds() {
 async function syncRequest(path, options = {}) {
   let res;
   try {
-    res = await fetch(sync.apiBase.replace(/\/+$/, '') + path, {
+    res = await fetch(path, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -1581,7 +1577,6 @@ async function syncRequest(path, options = {}) {
 }
 
 async function syncLogin(username, password, isRegister) {
-  sync.apiBase = DEFAULT_API_BASE;
   const body = await syncRequest(isRegister ? '/api/register' : '/api/login', {
     method: 'POST',
     body: JSON.stringify({ username, password }),
@@ -1662,7 +1657,7 @@ function syncRenderUI() {
 }
 function syncRenderTopbarPill() {
   const pill = $('#sync-pill');
-  // 沒登入過就不顯示這個標籤（apiBase 可能是空字串＝same-origin，不能拿來判斷）
+  // 沒登入過就不顯示這個標籤
   if (!syncConnected() && !sync.username) { pill.hidden = true; return; }
   pill.hidden = false;
   const label = { syncing: '同步中', synced: '已同步', error: '同步失敗', offline: '未登入' }[sync.status] || '未登入';

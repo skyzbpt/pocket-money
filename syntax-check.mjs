@@ -11,14 +11,17 @@ if (!m) {
 new vm.Script(m[1]);
 console.log('PASS  index.html 內嵌 JS 語法');
 
-// 前端必須走相對路徑（同源），不能寫死任何外部網址
-const base = m[1].match(/const DEFAULT_API_BASE = '([^']*)'/);
-if (!base) {
-  console.error('FAIL  找不到 DEFAULT_API_BASE');
+// 前端必須走相對路徑（同源），不能寫死任何外部網址，也不能有自訂伺服器網址的設定
+if (/apiBase|DEFAULT_API_BASE|pocket-money-sync-api'\s*[,)]/.test(m[1].replace("localStorage.removeItem('pocket-money-sync-api')", ''))) {
+  console.error('FAIL  前端仍有自訂伺服器網址（apiBase）的殘留');
   process.exit(1);
 }
-if (base[1] !== '') {
-  console.error(`FAIL  DEFAULT_API_BASE 應為空字串（同源），目前是 ${JSON.stringify(base[1])}`);
+if (!/fetch\(path,/.test(m[1])) {
+  console.error('FAIL  syncRequest 應直接用相對路徑 fetch(path, …)');
   process.exit(1);
 }
-console.log('PASS  DEFAULT_API_BASE 是同源設定');
+if (/https?:\/\/[^'"\s]*workers\.dev/.test(m[1])) {
+  console.error('FAIL  前端不應寫死外部 API 網址');
+  process.exit(1);
+}
+console.log('PASS  前端 API 一律走同源相對路徑');
