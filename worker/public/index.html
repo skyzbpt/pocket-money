@@ -311,6 +311,28 @@ tbody tr:hover { background: var(--hover); }
   position: absolute; width: 1px; height: 1px; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap;
 }
+/* .stats / .charts 有自己的 display，沒有這行 hidden 會蓋不掉 */
+[hidden] { display: none !important; }
+
+/* ── 登入前台：沒登入之前只看得到這一頁 ─────────────────────────── */
+body.locked > .topbar, body.locked > .wrap { display: none; }
+#gate {
+  position: fixed; inset: 0; z-index: 70; display: none;
+  align-items: center; justify-content: center; padding: 24px 16px;
+  background: linear-gradient(160deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 55%, var(--surface-2)) 100%);
+}
+body.locked #gate { display: flex; }
+#gate .gate-card {
+  width: min(380px, 100%); background: var(--surface-1);
+  border: 1px solid var(--border); border-radius: 14px;
+  padding: 28px 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.22);
+}
+#gate h2 { font-size: 19px; margin-bottom: 4px; }
+#gate .gate-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.6; }
+#gate .field { margin-bottom: 12px; }
+#gate button[type="submit"] { width: 100%; margin-top: 4px; }
+#gate .gate-error { display: none; font-size: 12px; color: var(--critical); margin-bottom: 10px; }
+#gate .gate-foot { font-size: 12px; color: var(--text-muted); margin-top: 16px; line-height: 1.6; }
 @media (max-width: 560px) {
   .wrap { padding: 14px 12px 48px; }
   .stat .v { font-size: 20px; }
@@ -318,12 +340,34 @@ tbody tr:hover { background: var(--hover); }
 }
 </style>
 </head>
-<body>
+<body class="locked">
+
+<!-- 登入前台：通過登入才會看到 app 本體 -->
+<div id="gate">
+  <div class="gate-card">
+    <h2>零用金記錄表</h2>
+    <div class="gate-sub">請先登入。帳號由管理員建立，忘記密碼請找管理員重設。</div>
+    <form id="gate-form" autocomplete="on">
+      <label class="field">
+        <span>帳號</span>
+        <input type="text" id="gate-username" autocomplete="username" required autofocus>
+      </label>
+      <label class="field">
+        <span>密碼</span>
+        <input type="password" id="gate-password" autocomplete="current-password" required>
+      </label>
+      <div class="gate-error" id="gate-error"></div>
+      <button class="btn primary" type="submit" id="gate-submit">登入</button>
+    </form>
+    <div class="gate-foot" id="gate-foot">登入後資料會自動跟雲端同步，換裝置登入同一組帳號就看得到同一份資料。</div>
+  </div>
+</div>
 
 <header class="topbar">
   <h1>零用金記錄表</h1>
   <div class="spacer"></div>
-  <button class="btn small ghost" id="sync-pill" hidden title="雲端同步狀態，點擊查看"></button>
+  <button class="btn small ghost" id="sync-pill" hidden title="雲端同步狀態"></button>
+  <button class="btn small" id="btn-logout-top" hidden>登出</button>
   <button class="btn small icon-btn" id="btn-theme" title="切換淺色／深色">
     <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M8 1.5v1.6M8 12.9v1.6M2.5 8H1M15 8h-1.5M3.8 3.8l1.1 1.1M11.1 11.1l1.1 1.1M3.8 12.2l1.1-1.1M11.1 4.9l1.1-1.1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="8" r="3.1" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
     主題
@@ -392,7 +436,7 @@ tbody tr:hover { background: var(--hover); }
   </section>
 
   <!-- 篩選（範圍涵蓋以下所有統計、圖表與明細） -->
-  <section>
+  <section id="filters-section">
     <div class="section-head">
       <h2>篩選</h2>
       <span class="hint">以下統計、圖表、明細都會依此篩選</span>
@@ -458,7 +502,7 @@ tbody tr:hover { background: var(--hover); }
   </section>
 
   <!-- 明細 -->
-  <section>
+  <section id="records-section">
     <div class="card">
       <div class="card-head">
         <h3>明細</h3>
@@ -506,26 +550,7 @@ tbody tr:hover { background: var(--hover); }
     <div class="list-editor" id="sync-box" style="margin-bottom:26px">
       <h3>雲端同步（跨裝置）</h3>
 
-      <div id="sync-setup">
-        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
-          用同一組帳號密碼在不同裝置登入，資料就會同步。<br>
-          帳號密碼由管理員建立與修改，無法自行註冊。
-        </div>
-        <form id="sync-form">
-          <label class="field" style="margin-bottom:8px">
-            <span>帳號</span>
-            <input type="text" id="sync-username" autocomplete="username" required>
-          </label>
-          <label class="field" style="margin-bottom:8px">
-            <span>密碼</span>
-            <input type="password" id="sync-password" autocomplete="current-password" required minlength="6">
-          </label>
-          <div id="sync-error" style="display:none;font-size:12px;color:var(--critical);margin-bottom:8px"></div>
-          <button class="btn small primary" type="submit" id="sync-submit">登入</button>
-        </form>
-      </div>
-
-      <div id="sync-connected" style="display:none">
+      <div id="sync-connected">
         <div style="font-size:13px;margin-bottom:4px">
           已登入：<strong id="sync-username-display"></strong>
         </div>
@@ -610,7 +635,7 @@ tbody tr:hover { background: var(--hover); }
       </div>
     </div>
 
-    <div class="danger-zone">
+    <div class="danger-zone" id="backup-box">
       <h3 style="font-size:13px;margin-bottom:8px">資料備份</h3>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn small" id="btn-export-json">匯出備份 JSON</button>
@@ -1124,10 +1149,11 @@ function renderTable(rows) {
   $('#records').hidden = sorted.length === 0;
   $('#record-count').textContent = `${nf.format(rows.length)} 筆（共 ${nf.format(db.records.length)} 筆）`;
   $$('#records th.sortable').forEach(th => {
-    const active = th.dataset.sort === sortState.key;
+    const active = editable && th.dataset.sort === sortState.key;
     th.setAttribute('aria-sort', active ? (sortState.dir === 'asc' ? 'ascending' : 'descending') : 'none');
     th.dataset.label ??= th.textContent.trim();
     th.textContent = th.dataset.label + (active ? (sortState.dir === 'asc' ? ' ▲' : ' ▼') : '');
+    th.style.cursor = editable ? '' : 'default';
   });
 }
 
@@ -1168,8 +1194,11 @@ function render() {
   renderFilterSelects();
   renderFormSelects();
   const rows = filteredRecords();
-  renderStats(rows);
-  renderCharts(rows);
+  // 一般員工看不到統計與圖表，就不用算
+  if (canEditRecords()) {
+    renderStats(rows);
+    renderCharts(rows);
+  }
   renderTable(rows);
 }
 
@@ -1264,6 +1293,7 @@ $('#records tbody').addEventListener('click', e => {
   }
 });
 $$('#records th.sortable').forEach(th => th.addEventListener('click', () => {
+  if (!canEditRecords()) return;
   const k = th.dataset.sort;
   if (sortState.key === k) sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
   else { sortState.key = k; sortState.dir = k === 'amount' || k === 'date' ? 'desc' : 'asc'; }
@@ -1303,11 +1333,11 @@ $$('[data-range]').forEach(b => b.addEventListener('click', () => {
   $('#q-to').value = filters.to;
   render();
 }));
-$('#btn-reset-filter').addEventListener('click', () => {
+function resetFilters() {
   Object.assign(filters, { from: '', to: '', type: 'all', category: 'all', person: 'all', payment: 'all', text: '' });
   $('#q-from').value = ''; $('#q-to').value = ''; $('#q-text').value = '';
-  render();
-});
+}
+$('#btn-reset-filter').addEventListener('click', () => { resetFilters(); render(); });
 
 /* 圖表／表格切換 */
 $$('.view-toggle').forEach(btn => btn.addEventListener('click', () => {
@@ -1322,6 +1352,7 @@ $$('.view-toggle').forEach(btn => btn.addEventListener('click', () => {
    ══════════════════════════════════════════════════════════════════════ */
 const drawer = $('#drawer'), backdrop = $('#drawer-backdrop');
 function openDrawer() {
+  if (!canEditRecords()) return;
   renderSettings();
   syncRenderUI();
   if (syncConnected() && sync.isAdmin) adminLoadUsers();
@@ -1467,7 +1498,10 @@ $('#btn-export-json').addEventListener('click', () => {
 });
 
 let importMode = 'csv';
-$('#btn-import-csv').addEventListener('click', () => { importMode = 'csv'; $('#file-input').click(); });
+$('#btn-import-csv').addEventListener('click', () => {
+  if (!canEditRecords()) return;
+  importMode = 'csv'; $('#file-input').click();
+});
 $('#btn-import-json').addEventListener('click', () => { importMode = 'json'; $('#file-input').click(); });
 
 $('#file-input').addEventListener('change', async e => {
@@ -1516,6 +1550,7 @@ function parseCSV(text) {
 }
 
 function importCSV(text) {
+  if (!canEditRecords()) { alert('一般使用者不能匯入資料，請找管理員。'); return; }
   const rows = parseCSV(text);
   if (rows.length < 2) throw new Error('檔案沒有資料列。');
   const header = rows[0].map(h => h.trim());
@@ -1565,8 +1600,8 @@ $('#btn-clear').addEventListener('click', () => {
 
 /* ══════════════════════════════════════════════════════════════════════
    雲端同步（Cloudflare Workers + D1，見 worker/ 目錄）
-   帳號登入後，整份 { settings, records } 會跟伺服器同步；還沒登入時，
-   app 的行為跟純本機版完全一樣。
+   必須登入才能使用：沒有有效的 session 就只看得到登入畫面。
+   登入後整份 { settings, records } 會跟伺服器同步。
    ══════════════════════════════════════════════════════════════════════ */
 /* API 一律打同網域的相對路徑 /api/...（前端跟 Worker 由同一個 Worker 托管），
    沒有、也不提供任何「自訂伺服器網址」的設定。
@@ -1588,21 +1623,33 @@ const sync = {
 };
 function syncConnected() { return !!sync.token; }
 
-/* 一般使用者（已登入、但不是管理員）只能新增記錄：明細只能看，不能改、
-   不能刪，也不能清空或用備份覆蓋。沒登入的純本機使用不受影響。 */
-function canEditRecords() { return !syncConnected() || sync.isAdmin; }
+/* 一般員工（已登入、但不是管理員）只能用「新增記錄」卡片記帳：
+   明細只能看（不能排序、編輯、刪除），也沒有篩選、統計、圖表、
+   匯出與匯入。管理員不受限制。沒登入的話連 app 本體都看不到。 */
+function canEditRecords() { return syncConnected() && sync.isAdmin; }
 
-/** 依身分切換唯讀相關的 UI；權限有變才重畫明細。 */
+/** 依身分切換版面；權限有變才重畫。 */
 let lastEditable = null;
 function applyRecordPermissions() {
   const editable = canEditRecords();
+  // 一般員工看不到的整塊區域
+  $('#filters-section').hidden = !editable;
+  $('#stats').hidden = !editable;
+  $('#charts').hidden = !editable;
+  // 明細卡片上的按鈕
   $('#readonly-hint').hidden = editable;
-  $('#btn-clear').hidden = !editable;
-  $('#btn-import-json').hidden = !editable;
+  $('#btn-export-csv').hidden = !editable;
+  $('#btn-import-csv').hidden = !editable;
+  // 設定抽屜裡的資料備份區
+  $('#backup-box').hidden = !editable;
+  // 一般員工不能開設定選單，改用頂端的登出按鈕
+  $('#btn-settings').hidden = !editable;
+  $('#btn-logout-top').hidden = editable || !syncConnected();
   if (editable === lastEditable) return;
   lastEditable = editable;
   if (!editable && editingId) exitEditMode();
-  renderTable(filteredRecords());
+  if (!editable) resetFilters();
+  render();
 }
 function persistSyncCreds() {
   store.setQuiet(SYNC_TOKEN_KEY, sync.token);
@@ -1637,12 +1684,61 @@ async function syncRequest(path, options = {}) {
   return body;
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   登入前台：沒登入就只看得到登入畫面
+   ══════════════════════════════════════════════════════════════════════ */
+function lockApp() {
+  document.body.classList.add('locked');
+  $('#gate-password').value = '';
+  $('#gate-username').focus();
+}
+function unlockApp() {
+  document.body.classList.remove('locked');
+  $('#gate-error').style.display = 'none';
+}
+function gateShowError(msg) {
+  const box = $('#gate-error');
+  box.textContent = msg;
+  box.style.display = '';
+}
+
+$('#gate-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const username = $('#gate-username').value.trim();
+  const password = $('#gate-password').value;
+  const btn = $('#gate-submit');
+  $('#gate-error').style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = '登入中…';
+  try {
+    await syncLogin(username, password);
+    unlockApp();
+    syncRenderUI();
+    render();
+  } catch (err) {
+    gateShowError(err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '登入';
+  }
+});
+
+$('#btn-logout-top').addEventListener('click', () => {
+  if (confirm('確定要登出嗎？')) syncLogout();
+});
+
 /* 帳號一律由管理員建立，前端只有「登入」。 */
 async function syncLogin(username, password) {
   const body = await syncRequest('/api/login', {
     method: 'POST',
     body: JSON.stringify({ username, password }),
   });
+  // 換一個帳號登入時，先把上一個帳號留在這台裝置的快取清掉，
+  // 否則新帳號在雲端還沒有資料時會把別人的記錄當成自己的推上去
+  if (sync.username && sync.username !== body.username) {
+    db = structuredClone(DEFAULT_DB);
+    store.setQuiet(STORE_KEY, JSON.stringify(db));
+  }
   sync.token = body.token;
   sync.username = body.username;
   sync.isAdmin = !!body.isAdmin;
@@ -1698,17 +1794,26 @@ function syncPush({ immediate = false, keepalive = false } = {}) {
   });
 }
 
-function syncLogout() {
+async function syncLogout() {
+  // 還沒送出的變更先送完，再讓伺服器作廢這個 session
+  if (sync.pushTimer) await syncPush({ immediate: true });
   syncRequest('/api/logout', { method: 'POST' }).catch(() => { /* 伺服器端 session 過期也沒關係 */ });
   clearSyncCreds();
   sync.status = 'offline';
+  // 登出後不留資料在這台裝置：雲端才是本體，下次登入會重新拉下來
+  db = structuredClone(DEFAULT_DB);
+  store.setQuiet(STORE_KEY, JSON.stringify(db));
+  exitEditMode();
+  resetFilters();
+  closeDrawer();
+  render();
   syncRenderUI();
+  lockApp();
 }
 
 function syncRenderUI() {
   const connected = syncConnected();
-  $('#sync-setup').style.display = connected ? 'none' : '';
-  $('#sync-connected').style.display = connected ? '' : 'none';
+  $('#sync-connected').hidden = !connected;
   if (connected) {
     $('#sync-username-display').textContent = sync.username;
     $('#sync-role-line').textContent = sync.isAdmin ? '身分：管理員（可管理帳號）' : '身分：一般使用者';
@@ -1879,43 +1984,28 @@ $('#admin-create-form').addEventListener('submit', async e => {
   }
 });
 
-$('#sync-form').addEventListener('submit', async e => {
-  e.preventDefault();
-  const username = $('#sync-username').value.trim();
-  const password = $('#sync-password').value;
-  const errBox = $('#sync-error'), submitBtn = $('#sync-submit');
-  errBox.style.display = 'none';
-  submitBtn.disabled = true;
-  const original = submitBtn.textContent;
-  submitBtn.textContent = '登入中…';
-  try {
-    await syncLogin(username, password);
-    $('#sync-password').value = '';
-    syncRenderUI();
-  } catch (err) {
-    errBox.textContent = err.message;
-    errBox.style.display = '';
-    errBox.scrollIntoView({ block: 'nearest' });
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.textContent = original;
-  }
-});
-
 $('#btn-sync-logout').addEventListener('click', () => {
   if (confirm('登出後這台裝置會停止跟雲端同步，本機資料仍會保留。確定登出？')) syncLogout();
 });
 
 /** 跟伺服器確認目前身分（管理員權限可能被別的管理員改掉了）。 */
 async function syncRefreshRole() {
-  if (!syncConnected()) return;
+  if (!syncConnected()) return false;
   try {
     const body = await syncRequest('/api/me', { method: 'GET' });
     sync.isAdmin = !!body.isAdmin;
     sync.username = body.username;
     persistSyncCreds();
     syncRenderUI();
-  } catch { /* 連不上或 session 過期時維持現狀，同步流程會再處理 */ }
+    return true;
+  } catch (err) {
+    // 401 時 syncRequest 已經清掉憑證：回到登入畫面
+    if (!syncConnected()) { lockApp(); gateShowError('登入已過期，請重新登入。'); return false; }
+    // 只是連不上伺服器的話維持現狀，同步流程會再處理
+    sync.status = 'error'; sync.errorMsg = err.message;
+    syncRenderUI();
+    return true;
+  }
 }
 
 /* 有變更還在 800ms 的 debounce 裡就關掉分頁的話，這裡補送一次。 */
@@ -1927,9 +2017,12 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') syncFlushPending();
 });
 
-function syncInit() {
+async function syncInit() {
   syncRenderUI();
-  if (syncConnected()) { syncRefreshRole(); syncPullAndMerge(); }
+  if (!syncConnected()) { lockApp(); return; }
+  // 本機有 token：先跟伺服器確認還有效，有效才解鎖畫面
+  unlockApp();
+  if (await syncRefreshRole()) syncPullAndMerge();
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -1943,16 +2036,16 @@ $('#btn-theme').addEventListener('click', () => {
   const next = current === 'dark' ? 'light' : 'dark';
   document.documentElement.dataset.theme = next;
   store.setQuiet(THEME_KEY, next);
-  renderCharts(filteredRecords());
+  if (canEditRecords()) renderCharts(filteredRecords());
 });
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-  if (!document.documentElement.dataset.theme) renderCharts(filteredRecords());
+  if (!document.documentElement.dataset.theme && canEditRecords()) renderCharts(filteredRecords());
 });
 
 let resizeTimer;
 addEventListener('resize', () => {
   clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => renderCharts(filteredRecords()), 120);
+  resizeTimer = setTimeout(() => { if (canEditRecords()) renderCharts(filteredRecords()); }, 120);
 });
 
 render();
