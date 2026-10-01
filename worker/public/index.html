@@ -5,83 +5,128 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>零用金記錄表</title>
 <style>
-/* ── 設計 token（淺色為預設，深色在下方兩個 scope 各覆寫一次） ───────── */
+/* ── 設計 token：天空藍、簡約。淺色為預設，深色在下方兩個 scope 各覆寫一次 ── */
 :root {
   color-scheme: light;
-  --surface-1: #fcfcfb;
-  --plane: #f9f9f7;
-  --text-primary: #0b0b0b;
-  --text-secondary: #52514e;
-  --text-muted: #898781;
-  --grid: #e1e0d9;
-  --axis: #c3c2b7;
-  --border: rgba(11,11,11,0.10);
+  --plane: #f3f8fc;
+  --surface-1: #ffffff;
+  --surface-2: #eef5fb;
+  --text-primary: #0f1d2a;
+  --text-secondary: #46586a;
+  --text-muted: #5f6f7f;
+  --grid: #e3ecf3;
+  --axis: #c3d2de;
+  --border: rgba(16,62,102,0.12);
   --field: #ffffff;
-  --hover: rgba(11,11,11,0.045);
-  --shadow: 0 1px 2px rgba(11,11,11,0.05);
-  --success-text: #006300;
+  --hover: rgba(10,124,193,0.06);
+  --ring: rgba(14,165,233,0.25);
+  --shadow: 0 1px 2px rgba(16,62,102,0.05), 0 4px 14px rgba(16,62,102,0.04);
+  --success-text: #0b7a3e;
   --critical: #d03b3b;
-  --series-1: #2a78d6;
+  --warning-text: #8a5300;
+  --warning-soft: #fff4dc;
+  --warning-line: #f3c56b;
+  /* 圖表類別色：第 1 槽換成天空藍，其餘沿用原本的色序（已重跑色盲辨識度檢核） */
+  --series-1: #1b8fd8;
   --series-2: #eb6834;
   --series-3: #1baf7a;
   --series-4: #eda100;
   --series-5: #e87ba4;
   --series-6: #008300;
-  --accent: #2a78d6;
+  /* 主題色：天空藍 */
+  --accent: #0a7cc1;        /* 實心按鈕底色（白字對比 4.5:1） */
   --accent-ink: #ffffff;
-  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='%2352514e' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --accent-text: #0369a1;   /* 白底上當文字用的天空藍 */
+  --accent-soft: #e4f3fd;   /* 淡天空藍底 */
+  --accent-line: #a8daf7;
+  --toast-bg: #0f1d2a;
+  --toast-ink: #ffffff;
+  --toast-action: #7dd3fc;
+  --gate-bg:
+    radial-gradient(60% 45% at 12% 18%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0) 70%),
+    radial-gradient(50% 40% at 88% 78%, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0) 70%),
+    linear-gradient(170deg, #cfeafc 0%, #e8f5fe 50%, #f6fbff 100%);
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='%2346586a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 @media (prefers-color-scheme: dark) {
   :root:where(:not([data-theme="light"])) {
     color-scheme: dark;
-    --surface-1: #1a1a19;
-    --plane: #0d0d0d;
-    --text-primary: #ffffff;
-    --text-secondary: #c3c2b7;
-    --text-muted: #898781;
-    --grid: #2c2c2a;
-    --axis: #383835;
-    --border: rgba(255,255,255,0.10);
-    --field: #232322;
-    --hover: rgba(255,255,255,0.06);
+    --plane: #0b1520;
+    --surface-1: #132130;
+    --surface-2: #1a2b3d;
+    --text-primary: #eaf3fa;
+    --text-secondary: #a9bccb;
+    --text-muted: #8498aa;
+    --grid: #1f3245;
+    --axis: #2e465b;
+    --border: rgba(160,205,240,0.12);
+    --field: #0f1b28;
+    --hover: rgba(56,189,248,0.08);
+    --ring: rgba(56,189,248,0.3);
     --shadow: none;
-    --success-text: #0ca30c;
-    --critical: #e66767;
-    --series-1: #3987e5;
+    --success-text: #34c27a;
+    --critical: #f07171;
+    --warning-text: #f5c14f;
+    --warning-soft: rgba(245,193,79,0.10);
+    --warning-line: rgba(245,193,79,0.40);
+    --series-1: #2f9be3;
     --series-2: #d95926;
     --series-3: #199e70;
     --series-4: #c98500;
     --series-5: #d55181;
     --series-6: #008300;
-    --accent: #3987e5;
-    --accent-ink: #0d0d0d;
-    --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='%23c3c2b7' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    --accent: #38bdf8;
+    --accent-ink: #062033;
+    --accent-text: #7dd3fc;
+    --accent-soft: rgba(56,189,248,0.12);
+    --accent-line: rgba(56,189,248,0.38);
+    --toast-bg: #eaf3fa;
+    --toast-ink: #0f1d2a;
+    --toast-action: #0369a1;
+    --gate-bg:
+      radial-gradient(55% 40% at 15% 15%, rgba(56,189,248,0.16) 0%, rgba(56,189,248,0) 70%),
+      linear-gradient(170deg, #0f2b42 0%, #0b1520 65%);
+    --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='%23a9bccb' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --surface-1: #1a1a19;
-  --plane: #0d0d0d;
-  --text-primary: #ffffff;
-  --text-secondary: #c3c2b7;
-  --text-muted: #898781;
-  --grid: #2c2c2a;
-  --axis: #383835;
-  --border: rgba(255,255,255,0.10);
-  --field: #232322;
-  --hover: rgba(255,255,255,0.06);
+  --plane: #0b1520;
+  --surface-1: #132130;
+  --surface-2: #1a2b3d;
+  --text-primary: #eaf3fa;
+  --text-secondary: #a9bccb;
+  --text-muted: #8498aa;
+  --grid: #1f3245;
+  --axis: #2e465b;
+  --border: rgba(160,205,240,0.12);
+  --field: #0f1b28;
+  --hover: rgba(56,189,248,0.08);
+  --ring: rgba(56,189,248,0.3);
   --shadow: none;
-  --success-text: #0ca30c;
-  --critical: #e66767;
-  --series-1: #3987e5;
+  --success-text: #34c27a;
+  --critical: #f07171;
+  --warning-text: #f5c14f;
+  --warning-soft: rgba(245,193,79,0.10);
+  --warning-line: rgba(245,193,79,0.40);
+  --series-1: #2f9be3;
   --series-2: #d95926;
   --series-3: #199e70;
   --series-4: #c98500;
   --series-5: #d55181;
   --series-6: #008300;
-  --accent: #3987e5;
-  --accent-ink: #0d0d0d;
-  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='%23c3c2b7' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --accent: #38bdf8;
+  --accent-ink: #062033;
+  --accent-text: #7dd3fc;
+  --accent-soft: rgba(56,189,248,0.12);
+  --accent-line: rgba(56,189,248,0.38);
+  --toast-bg: #eaf3fa;
+  --toast-ink: #0f1d2a;
+  --toast-action: #0369a1;
+  --gate-bg:
+    radial-gradient(55% 40% at 15% 15%, rgba(56,189,248,0.16) 0%, rgba(56,189,248,0) 70%),
+    linear-gradient(170deg, #0f2b42 0%, #0b1520 65%);
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='%23a9bccb' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 * { box-sizing: border-box; }
@@ -100,65 +145,79 @@ button { font: inherit; color: inherit; }
 
 /* ── 版面 ───────────────────────────────────────────────────────────── */
 .topbar {
-  display: flex; align-items: center; gap: 12px;
-  padding: 14px 20px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 20px;
   background: var(--surface-1);
+  background: color-mix(in srgb, var(--surface-1) 86%, transparent);
+  -webkit-backdrop-filter: saturate(1.4) blur(10px);
+  backdrop-filter: saturate(1.4) blur(10px);
   border-bottom: 1px solid var(--border);
   position: sticky; top: 0; z-index: 40;
 }
-.topbar h1 { font-size: 17px; letter-spacing: -0.01em; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.topbar h1 { font-size: 16px; letter-spacing: 0.02em; white-space: nowrap; }
 .topbar .spacer { flex: 1; }
-.wrap { max-width: 1180px; margin: 0 auto; padding: 20px 20px 64px; }
-section { margin-bottom: 20px; }
-.section-head {
-  display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px;
+.who { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+/* 品牌標誌：天空藍漸層方塊 + 白色錢包 */
+.brand-mark {
+  width: 30px; height: 30px; border-radius: 9px; flex: none;
+  display: grid; place-items: center;
+  background: linear-gradient(140deg, #7dd3fc 0%, #0ea5e9 55%, #0284c7 100%);
+  box-shadow: 0 2px 8px rgba(14,165,233,0.30);
 }
-.section-head h2 { font-size: 13px; letter-spacing: 0.04em; color: var(--text-secondary); text-transform: none; }
-.section-head .hint { font-size: 12px; color: var(--text-muted); }
+.brand-mark svg { width: 18px; height: 18px; display: block; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 22px 20px 72px; }
+section { margin-bottom: 22px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; padding: 0 2px;
+}
+.section-head h2 { font-size: 13px; color: var(--text-secondary); }
+.hint { font-size: 12px; color: var(--text-muted); }
 
 .card {
   background: var(--surface-1);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 14px;
   box-shadow: var(--shadow);
 }
 .card-head {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  padding: 12px 14px 0;
+  padding: 14px 16px 0;
 }
-.card-head h3 { font-size: 13px; color: var(--text-secondary); }
+.card-head h3 { font-size: 14px; color: var(--text-primary); }
 .card-head .spacer { flex: 1; }
-.card-body { padding: 8px 14px 14px; }
+.card-body { padding: 10px 16px 16px; }
 
 /* ── 控制項 ─────────────────────────────────────────────────────────── */
-label.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-label.field > span { font-size: 12px; color: var(--text-muted); }
+.field { display: flex; flex-direction: column; gap: 5px; min-width: 0; margin: 0; }
+.field > .field-label { font-size: 12px; color: var(--text-secondary); }
 input, select, textarea {
   font: inherit; color: var(--text-primary);
   background: var(--field);
   border: 1px solid var(--border);
-  border-radius: 7px;
-  padding: 7px 9px;
+  border-radius: 9px;
+  padding: 7px 10px;
   min-width: 0; width: 100%;
   /* date／select 的原生高度跟一般文字框不一致（瀏覽器各自加了圖示或內距），
      統一鎖定高度與行高，讓所有欄位在同一列裡看起來一樣高 */
-  height: 37px;
-  line-height: 21px;
+  height: 38px;
+  line-height: 22px;
   appearance: none;
   -webkit-appearance: none;
+  transition: border-color .12s ease, box-shadow .12s ease;
 }
-input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible {
-  outline: 2px solid var(--accent); outline-offset: 1px;
+input::placeholder { color: var(--text-muted); opacity: 0.75; }
+input:hover, select:hover { border-color: var(--accent-line); }
+input:focus, select:focus, textarea:focus {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring);
 }
-/* 日期欄位的原生高度／圖示跟其他欄位的瀏覽器預設不一致，統一改成
-   自畫下拉箭頭／月曆圖示，外觀才會跟文字框、下拉選單完全對齊 */
-input[type="date"] { color-scheme: light; }
-:root:where(:not([data-theme="light"])) input[type="date"] { color-scheme: dark; }
-:root[data-theme="dark"] input[type="date"] { color-scheme: dark; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* 日期欄位的月曆圖示：color-scheme 由 :root 的 token 繼承下來，
+   淺色／深色主題會自動換成對應的圖示顏色 */
 input[type="date"]::-webkit-calendar-picker-indicator {
   margin-left: 6px;
   cursor: pointer;
-  opacity: 0.65;
+  opacity: 0.6;
   border-radius: 4px;
 }
 input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
@@ -168,56 +227,91 @@ select {
   cursor: pointer;
   background-image: var(--select-arrow);
   background-repeat: no-repeat;
-  background-position: right 9px center;
+  background-position: right 10px center;
   background-size: 11px;
 }
 .btn {
-  display: inline-flex; align-items: center; gap: 6px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   background: var(--field); border: 1px solid var(--border);
-  border-radius: 7px; padding: 7px 11px; cursor: pointer; white-space: nowrap;
+  border-radius: 9px; padding: 7px 12px; cursor: pointer; white-space: nowrap;
+  transition: background .12s ease, border-color .12s ease, color .12s ease;
 }
-.btn:hover { background: var(--hover); }
-.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
-.btn.primary:hover { filter: brightness(1.07); }
-.btn.ghost { background: transparent; }
-.btn.small { padding: 4px 8px; font-size: 12px; border-radius: 6px; }
+.btn:hover { background: var(--hover); border-color: var(--accent-line); }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.btn.primary {
+  background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600;
+}
+.btn.primary:hover { background: var(--accent); filter: brightness(1.07); }
+.btn.ghost { background: transparent; border-color: transparent; }
+.btn.ghost:hover { background: var(--hover); }
+.btn.small { padding: 4px 10px; font-size: 12px; border-radius: 8px; }
 .btn svg { flex-shrink: 0; }
-.btn.danger:hover { color: var(--critical); border-color: var(--critical); }
-.btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.btn.danger:hover { color: var(--critical); border-color: var(--critical); background: transparent; }
+.btn[aria-pressed="true"] {
+  background: var(--accent-soft); color: var(--accent-text); border-color: var(--accent-line); font-weight: 600;
+}
 
 /* ── 輸入表單 ───────────────────────────────────────────────────────── */
+#entry-section { scroll-margin-top: 72px; }
 .entry-grid {
-  display: grid; gap: 10px;
+  display: grid; gap: 12px;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 }
 .entry-actions { display: flex; gap: 8px; align-items: flex-end; }
-.type-toggle { display: flex; gap: 0; }
+.entry-actions .btn { flex: 1; height: 38px; }
+/* 支出／收入：分段切換鈕 */
+.type-toggle {
+  display: flex; gap: 3px; padding: 3px; height: 38px;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+}
 .type-toggle button {
-  flex: 1; padding: 7px 8px; cursor: pointer; background: var(--field);
-  border: 1px solid var(--border);
+  flex: 1; border: 0; border-radius: 7px; background: transparent;
+  color: var(--text-secondary); cursor: pointer;
+  transition: background .12s ease, color .12s ease;
 }
-.type-toggle button:first-child { border-radius: 7px 0 0 7px; }
-.type-toggle button:last-child { border-radius: 0 7px 7px 0; border-left: none; }
-.type-toggle button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
+.type-toggle button:hover { color: var(--text-primary); }
+.type-toggle button[aria-pressed="true"] {
+  background: var(--surface-1); color: var(--accent-text); font-weight: 600;
+  box-shadow: 0 1px 3px rgba(16,62,102,0.16);
+}
 .editing-note {
-  display: none; align-items: center; gap: 8px; margin-top: 10px;
-  font-size: 12px; color: var(--text-secondary);
+  display: none; align-items: center; gap: 8px; margin-top: 12px;
+  padding: 6px 6px 6px 12px; border-radius: 9px;
+  background: var(--accent-soft); color: var(--accent-text); font-size: 12px;
 }
+.editing-note .spacer { flex: 1; }
 .editing .editing-note { display: flex; }
+.editing .card { border-color: var(--accent-line); }
 
 /* ── 篩選列 ─────────────────────────────────────────────────────────── */
-.filters { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); align-items: end; }
-.quick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.filters { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); align-items: end; }
+.quick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 
 /* ── 統計卡 ─────────────────────────────────────────────────────────── */
 .stats { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
-.stat { padding: 14px; }
-.stat .k { font-size: 12px; color: var(--text-muted); }
-.stat .v { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; margin-top: 2px; }
-.stat.hero .v { font-size: 32px; }
+.stat { padding: 14px 16px; }
+.stat .k { font-size: 12px; color: var(--text-secondary); }
+.stat .v { font-size: 22px; font-weight: 650; letter-spacing: -0.01em; margin-top: 4px; }
 .stat .sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.stat.hero {
+  background: linear-gradient(135deg, var(--accent-soft) 0%, var(--surface-1) 100%);
+  border-color: var(--accent-line);
+}
+.stat.hero .v { font-size: 32px; color: var(--accent-text); }
+.stat.hero.warn {
+  background: linear-gradient(135deg, var(--warning-soft) 0%, var(--surface-1) 100%);
+  border-color: var(--warning-line);
+}
+.stat.hero.warn .v { color: var(--warning-text); }
+.stat .badge {
+  display: inline-flex; align-items: center; gap: 4px; margin-top: 8px;
+  padding: 2px 9px 2px 7px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  color: var(--warning-text); background: var(--surface-1); border: 1px solid var(--warning-line);
+}
+.stat .badge svg { width: 13px; height: 13px; }
+@media (min-width: 720px) { .stat.hero { grid-column: span 2; } }
 .pos { color: var(--success-text); }
-.neg { color: var(--critical); }
+.neg, .stat .v.neg { color: var(--critical); }
 
 /* ── 圖表 ───────────────────────────────────────────────────────────── */
 .charts { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); align-items: start; }
@@ -229,55 +323,68 @@ select {
 .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; }
 .legend .item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
 .legend .swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
-.empty { padding: 28px 4px; text-align: center; color: var(--text-muted); font-size: 13px; }
+.empty { padding: 32px 4px; text-align: center; color: var(--text-muted); font-size: 13px; }
 
 /* ── 表格 ───────────────────────────────────────────────────────────── */
 .table-scroll { overflow-x: auto; }
 #records-scroll { max-height: 62vh; overflow-y: auto; }
 table { border-collapse: collapse; width: 100%; font-size: 13px; }
-th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
 th {
-  font-weight: 600; color: var(--text-secondary); font-size: 12px;
+  font-weight: 600; color: var(--text-muted); font-size: 12px;
   position: sticky; top: 0; background: var(--surface-1); z-index: 1;
 }
 th.sortable { cursor: pointer; user-select: none; }
 th.sortable:hover { color: var(--text-primary); }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-tbody tr:hover { background: var(--hover); }
+td.c-amt { font-weight: 600; }
+td.c-note { white-space: normal; color: var(--text-muted); }
+td.c-act { text-align: right; }
+tbody tr { transition: background .1s ease; }
+@media (hover: hover) { tbody tr:hover { background: var(--hover); } }
 .tag {
-  display: inline-block; padding: 1px 7px; border-radius: 20px;
-  font-size: 11px; border: 1px solid var(--border); color: var(--text-secondary);
+  display: inline-block; padding: 1px 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 600; background: var(--surface-2); color: var(--text-secondary);
 }
+.tag.income { background: color-mix(in srgb, var(--success-text) 13%, transparent); color: var(--success-text); }
 .mini-table th, .mini-table td { padding: 6px 8px; }
+.more-row { display: flex; justify-content: center; padding-top: 12px; }
 
 /* ── 設定抽屜 ───────────────────────────────────────────────────────── */
 .drawer-backdrop {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+  position: fixed; inset: 0; background: rgba(8,24,40,0.38);
   display: none; z-index: 50;
 }
 .drawer-backdrop.open { display: block; }
 .drawer {
   position: fixed; top: 0; right: 0; bottom: 0; width: min(480px, 100%);
   background: var(--surface-1); border-left: 1px solid var(--border);
-  transform: translateX(100%); transition: transform .18s ease;
+  box-shadow: -10px 0 40px rgba(8,24,40,0.12);
+  transform: translateX(100%);
+  /* 關上時等滑出動畫結束才隱藏，隱藏後 Tab 鍵就不會跑進抽屜裡 */
+  transition: transform .2s ease, visibility 0s linear .2s;
   z-index: 51; display: flex; flex-direction: column;
+  visibility: hidden;
 }
-.drawer.open { transform: none; }
+.drawer.open { transform: none; visibility: visible; transition: transform .2s ease, visibility 0s; }
 @media (prefers-reduced-motion: reduce) { .drawer { transition: none; } }
 .drawer-head {
   display: flex; align-items: center; gap: 10px;
   padding: 14px 16px; border-bottom: 1px solid var(--border);
 }
+.drawer-head h2 { font-size: 15px; }
 /* overflow-anchor:none — 登入失敗訊息從 display:none 變成可見時，
    瀏覽器的捲動錨定會自動把畫面往下捲以「保持錨點元素不動」，
    結果反而把剛顯示的錯誤訊息捲出畫面，所以在這裡關掉 */
 .drawer-body { overflow-y: auto; overflow-anchor: none; padding: 16px; flex: 1; }
-.list-editor { margin-bottom: 22px; }
+.list-editor { margin-bottom: 24px; }
 .list-editor h3 { font-size: 13px; margin-bottom: 8px; }
 .list-editor .row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
-.list-editor .row input { flex: 1; }
+.list-editor .row input { flex: 1; width: auto; }
 .list-editor .add { display: flex; gap: 6px; margin-top: 8px; }
 .list-editor .count { font-size: 11px; color: var(--text-muted); margin-left: 6px; font-weight: 400; }
+.list-editor .note { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.list-editor .unit { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
 .danger-zone { border-top: 1px solid var(--border); padding-top: 16px; }
 
 /* ── 帳號管理（僅管理員看得到） ──────────────────────────────────── */
@@ -286,19 +393,29 @@ tbody tr:hover { background: var(--hover); }
   padding: 8px 0; border-bottom: 1px dashed var(--border);
 }
 .user-row .name { font-size: 13px; font-weight: 600; }
-.user-row .tag {
-  font-size: 11px; padding: 1px 6px; border-radius: 999px;
-  background: var(--surface-2); color: var(--text-muted);
-}
 .user-row .acts { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ── 同步狀態 ───────────────────────────────────────────────────────── */
+.sync-pill { gap: 7px; color: var(--text-secondary); }
+.sync-pill .dot {
+  width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--text-muted);
+}
+.sync-pill[data-state="synced"] .dot { background: var(--accent); }
+.sync-pill[data-state="syncing"] .dot { background: var(--accent); animation: pulse 1s ease-in-out infinite; }
+.sync-pill[data-state="pending"] .dot { background: var(--warning-text); }
+.sync-pill[data-state="pending"] { color: var(--warning-text); }
+.sync-pill[data-state="error"] .dot { background: var(--critical); }
+.sync-pill[data-state="error"] { color: var(--critical); }
+@keyframes pulse { 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .sync-pill .dot { animation: none !important; } }
 
 /* ── 提示氣泡 ───────────────────────────────────────────────────────── */
 #tip {
   position: fixed; z-index: 60; pointer-events: none; opacity: 0;
   background: var(--surface-1); color: var(--text-primary);
-  border: 1px solid var(--border); border-radius: 8px;
+  border: 1px solid var(--border); border-radius: 9px;
   padding: 8px 10px; font-size: 12px; line-height: 1.45;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.18); max-width: 240px;
+  box-shadow: 0 6px 20px rgba(8,24,40,0.16); max-width: 240px;
   transition: opacity .08s linear;
 }
 #tip.show { opacity: 1; }
@@ -306,6 +423,32 @@ tbody tr:hover { background: var(--hover); }
 #tip .t-row { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 #tip .t-row .swatch { width: 8px; height: 8px; border-radius: 2px; flex: none; }
 #tip .t-row .v { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+/* ── 操作回饋（toast）：取代大部分 alert，不打斷操作 ─────────────── */
+#toasts {
+  position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
+  z-index: 80; width: min(420px, calc(100% - 32px));
+  display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+}
+.toast {
+  pointer-events: auto; display: flex; align-items: center; gap: 10px;
+  padding: 10px 10px 10px 14px; border-radius: 12px; font-size: 13px;
+  background: var(--toast-bg); color: var(--toast-ink);
+  box-shadow: 0 10px 30px rgba(8,24,40,0.22);
+  animation: toast-in .2s ease;
+}
+.toast.leaving { opacity: 0; transform: translateY(6px); transition: opacity .18s ease, transform .18s ease; }
+.toast .icon { width: 8px; height: 8px; border-radius: 50%; flex: none; background: #38bdf8; }
+.toast.warn .icon { background: #f5c14f; }
+.toast.error .icon { background: #f07171; }
+.toast .msg { flex: 1; min-width: 0; }
+.toast button {
+  background: none; border: 0; cursor: pointer; padding: 4px 8px; border-radius: 6px;
+  color: var(--toast-action); font-weight: 700;
+}
+.toast button:hover { background: rgba(127,127,127,0.18); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
 
 .sr-only {
   position: absolute; width: 1px; height: 1px; overflow: hidden;
@@ -317,26 +460,77 @@ tbody tr:hover { background: var(--hover); }
 /* ── 登入前台：沒登入之前只看得到這一頁 ─────────────────────────── */
 body.locked > .topbar, body.locked > .wrap { display: none; }
 #gate {
-  position: fixed; inset: 0; z-index: 70; display: none;
+  position: fixed; inset: 0; z-index: 70; display: none; overflow-y: auto;
   align-items: center; justify-content: center; padding: 24px 16px;
-  background: linear-gradient(160deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 55%, var(--surface-2)) 100%);
+  background: var(--plane);
+  background-image: var(--gate-bg);
 }
 body.locked #gate { display: flex; }
 #gate .gate-card {
   width: min(380px, 100%); background: var(--surface-1);
-  border: 1px solid var(--border); border-radius: 14px;
-  padding: 28px 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.22);
+  border: 1px solid var(--border); border-radius: 18px;
+  padding: 30px 26px 24px; box-shadow: 0 24px 60px rgba(16,62,102,0.14);
 }
-#gate h2 { font-size: 19px; margin-bottom: 4px; }
-#gate .gate-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.6; }
-#gate .field { margin-bottom: 12px; }
-#gate button[type="submit"] { width: 100%; margin-top: 4px; }
-#gate .gate-error { display: none; font-size: 12px; color: var(--critical); margin-bottom: 10px; }
-#gate .gate-foot { font-size: 12px; color: var(--text-muted); margin-top: 16px; line-height: 1.6; }
+#gate .gate-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+#gate .gate-brand .brand-mark { width: 44px; height: 44px; border-radius: 13px; }
+#gate .gate-brand .brand-mark svg { width: 26px; height: 26px; }
+#gate h2 { font-size: 20px; letter-spacing: 0.02em; }
+#gate .gate-sub { font-size: 12px; color: var(--text-muted); margin: 12px 0 20px; line-height: 1.6; }
+#gate .field { margin-bottom: 14px; }
+#gate button[type="submit"] { width: 100%; height: 40px; margin-top: 4px; font-size: 15px; }
+#gate .gate-error {
+  display: none; font-size: 12px; color: var(--critical); margin-bottom: 12px;
+  padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--critical) 9%, transparent);
+}
+#gate .gate-error.info { color: var(--accent-text); background: var(--accent-soft); }
+#gate .gate-foot {
+  font-size: 12px; color: var(--text-muted); margin-top: 18px; padding-top: 14px;
+  border-top: 1px solid var(--border); line-height: 1.6;
+}
+
+/* ── 手機 ───────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .who { display: none; }
+  /* 明細改成一筆一張的卡片：第一行項目＋金額，第二行日期・類別・記錄人・付款方式 */
+  #records-scroll { max-height: none; overflow: visible; }
+  #records thead { display: none; }
+  #records, #records tbody { display: block; }
+  #records tr {
+    display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; row-gap: 3px;
+    padding: 11px 2px; border-bottom: 1px solid var(--grid);
+  }
+  #records td { border: 0; padding: 0; white-space: normal; }
+  #records td.c-name { order: 1; flex: 1 1 calc(100% - 128px); min-width: 0; font-size: 14px; font-weight: 600; }
+  #records td.c-amt { order: 2; flex: 0 0 120px; font-size: 15px; }
+  #records td.c-type { display: none; }
+  #records td.c-date, #records td.c-cat, #records td.c-person, #records td.c-pay {
+    font-size: 12px; color: var(--text-muted);
+  }
+  #records td.c-date { order: 3; }
+  #records td.c-cat { order: 4; }
+  #records td.c-person { order: 5; }
+  #records td.c-pay { order: 6; }
+  #records td.c-cat::before, #records td.c-person::before, #records td.c-pay::before {
+    content: "·"; margin-right: 8px; color: var(--axis);
+  }
+  #records td.c-note { order: 7; flex-basis: 100%; font-size: 12px; }
+  #records td.c-act { order: 8; flex-basis: 100%; margin-top: 2px; }
+  #records td:empty { display: none; }
+}
 @media (max-width: 560px) {
-  .wrap { padding: 14px 12px 48px; }
+  .topbar { padding: 10px 12px; gap: 6px; }
+  .icon-btn .label { display: none; }
+  .icon-btn { padding: 6px 8px; }
+  .wrap { padding: 14px 12px 56px; }
+  .card-head { padding: 12px 14px 0; }
+  .card-body { padding: 10px 14px 14px; }
+  .entry-actions, .entry-grid .wide { grid-column: 1 / -1; }
   .stat .v { font-size: 20px; }
-  .stat.hero .v { font-size: 26px; }
+  .stat.hero .v { font-size: 28px; }
+  #toasts { bottom: 14px; }
+}
+@media (max-width: 380px) {
+  .sync-pill .txt { display: none; }
 }
 </style>
 </head>
@@ -345,18 +539,21 @@ body.locked #gate { display: flex; }
 <!-- 登入前台：通過登入才會看到 app 本體 -->
 <div id="gate">
   <div class="gate-card">
-    <h2>零用金記錄表</h2>
+    <div class="gate-brand">
+      <span class="brand-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7.5h12.5a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6.5A2.5 2.5 0 0 1 4 16.5V7a2 2 0 0 1 2-2h9.5" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><circle cx="15.8" cy="13.25" r="1.4" fill="#fff"/></svg></span>
+      <h2>零用金記錄表</h2>
+    </div>
     <div class="gate-sub">請先登入。帳號由管理員建立，忘記密碼請找管理員重設。</div>
     <form id="gate-form" autocomplete="on">
       <label class="field">
-        <span>帳號</span>
+        <span class="field-label">帳號</span>
         <input type="text" id="gate-username" autocomplete="username" required autofocus>
       </label>
       <label class="field">
-        <span>密碼</span>
+        <span class="field-label">密碼</span>
         <input type="password" id="gate-password" autocomplete="current-password" required>
       </label>
-      <div class="gate-error" id="gate-error"></div>
+      <div class="gate-error" id="gate-error" role="alert"></div>
       <button class="btn primary" type="submit" id="gate-submit">登入</button>
     </form>
     <div class="gate-foot" id="gate-foot">全公司共用同一本帳，登入後就看得到大家記的紀錄，更動會自動同步。</div>
@@ -364,17 +561,21 @@ body.locked #gate { display: flex; }
 </div>
 
 <header class="topbar">
-  <h1>零用金記錄表</h1>
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7.5h12.5a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6.5A2.5 2.5 0 0 1 4 16.5V7a2 2 0 0 1 2-2h9.5" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><circle cx="15.8" cy="13.25" r="1.4" fill="#fff"/></svg></span>
+    <h1>零用金記錄表</h1>
+  </div>
   <div class="spacer"></div>
-  <button class="btn small ghost" id="sync-pill" hidden title="雲端同步狀態"></button>
+  <span class="who" id="who" hidden></span>
+  <button class="btn small ghost sync-pill" id="sync-pill" hidden title="雲端同步狀態"><span class="dot" aria-hidden="true"></span><span class="txt"></span></button>
   <button class="btn small" id="btn-logout-top" hidden>登出</button>
-  <button class="btn small icon-btn" id="btn-theme" title="切換淺色／深色">
+  <button class="btn small icon-btn" id="btn-theme" title="切換淺色／深色" aria-label="切換淺色／深色">
     <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M8 1.5v1.6M8 12.9v1.6M2.5 8H1M15 8h-1.5M3.8 3.8l1.1 1.1M11.1 11.1l1.1 1.1M3.8 12.2l1.1-1.1M11.1 4.9l1.1-1.1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="8" r="3.1" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
-    主題
+    <span class="label">主題</span>
   </button>
-  <button class="btn small icon-btn" id="btn-settings">
+  <button class="btn small icon-btn" id="btn-settings" aria-label="設定選單">
     <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" fill="currentColor" d="M6.24,3.75 L6.65,1.85 L9.35,1.85 L9.76,3.75 L11.4,2.69 L13.31,4.6 L12.25,6.24 L14.15,6.65 L14.15,9.35 L12.25,9.76 L13.31,11.4 L11.4,13.31 L9.76,12.25 L9.35,14.15 L6.65,14.15 L6.24,12.25 L4.6,13.31 L2.69,11.4 L3.75,9.76 L1.85,9.35 L1.85,6.65 L3.75,6.24 L2.69,4.6 L4.6,2.69 Z M5.9,8 A2.1,2.1 0 1 0 10.1,8 A2.1,2.1 0 1 0 5.9,8 Z"/></svg>
-    設定選單
+    <span class="label">設定選單</span>
   </button>
 </header>
 
@@ -388,46 +589,48 @@ body.locked #gate { display: flex; }
         <form id="entry-form" autocomplete="off">
           <div class="entry-grid">
             <label class="field">
-              <span>日期</span>
+              <span class="field-label">日期</span>
               <input type="date" id="f-date" required>
             </label>
-            <label class="field">
-              <span>類型</span>
-              <span class="type-toggle" role="group" aria-label="類型">
+            <div class="field">
+              <span class="field-label" id="type-label">類型</span>
+              <span class="type-toggle" role="group" aria-labelledby="type-label">
                 <button type="button" id="t-expense" aria-pressed="true">支出</button>
                 <button type="button" id="t-income" aria-pressed="false">收入</button>
               </span>
-            </label>
+            </div>
             <label class="field">
-              <span>類別</span>
+              <span class="field-label">類別</span>
               <select id="f-category" required></select>
             </label>
             <label class="field">
-              <span>項目名稱</span>
-              <input type="text" id="f-name" placeholder="例：影印紙 A4" required>
+              <span class="field-label">項目名稱</span>
+              <input type="text" id="f-name" placeholder="例：影印紙 A4" list="name-suggestions" required>
             </label>
             <label class="field">
-              <span>記錄人</span>
+              <span class="field-label">記錄人</span>
               <select id="f-person" required></select>
             </label>
             <label class="field">
-              <span>金額</span>
-              <input type="number" id="f-amount" min="0" step="0.01" placeholder="0" required>
+              <span class="field-label">金額</span>
+              <input type="number" id="f-amount" min="0" step="0.01" placeholder="0" inputmode="decimal" required>
             </label>
             <label class="field">
-              <span>付款方式</span>
+              <span class="field-label">付款方式</span>
               <select id="f-payment" required></select>
             </label>
-            <label class="field">
-              <span>備註（選填）</span>
+            <label class="field wide">
+              <span class="field-label">備註（選填）</span>
               <input type="text" id="f-note" placeholder="">
             </label>
             <div class="entry-actions">
-              <button class="btn primary" type="submit" id="btn-save" style="flex:1">新增</button>
+              <button class="btn primary" type="submit" id="btn-save">新增</button>
             </div>
           </div>
+          <datalist id="name-suggestions"></datalist>
           <div class="editing-note">
             <span id="edit-hint"></span>
+            <span class="spacer"></span>
             <button type="button" class="btn small ghost" id="btn-cancel-edit">取消編輯</button>
           </div>
         </form>
@@ -443,20 +646,20 @@ body.locked #gate { display: flex; }
     </div>
     <div class="card"><div class="card-body">
       <div class="filters">
-        <label class="field"><span>起始日期</span><input type="date" id="q-from"></label>
-        <label class="field"><span>結束日期</span><input type="date" id="q-to"></label>
-        <label class="field"><span>類型</span><select id="q-type"></select></label>
-        <label class="field"><span>類別</span><select id="q-category"></select></label>
-        <label class="field"><span>記錄人</span><select id="q-person"></select></label>
-        <label class="field"><span>付款方式</span><select id="q-payment"></select></label>
-        <label class="field"><span>關鍵字</span><input type="search" id="q-text" placeholder="項目／備註"></label>
+        <label class="field"><span class="field-label">起始日期</span><input type="date" id="q-from"></label>
+        <label class="field"><span class="field-label">結束日期</span><input type="date" id="q-to"></label>
+        <label class="field"><span class="field-label">類型</span><select id="q-type"></select></label>
+        <label class="field"><span class="field-label">類別</span><select id="q-category"></select></label>
+        <label class="field"><span class="field-label">記錄人</span><select id="q-person"></select></label>
+        <label class="field"><span class="field-label">付款方式</span><select id="q-payment"></select></label>
+        <label class="field"><span class="field-label">關鍵字</span><input type="search" id="q-text" placeholder="項目／備註"></label>
       </div>
       <div class="quick">
-        <button class="btn small" data-range="this-month">本月</button>
-        <button class="btn small" data-range="last-month">上月</button>
-        <button class="btn small" data-range="90">近 90 天</button>
-        <button class="btn small" data-range="this-year">今年</button>
-        <button class="btn small" data-range="all">全部</button>
+        <button class="btn small" data-range="this-month" aria-pressed="false">本月</button>
+        <button class="btn small" data-range="last-month" aria-pressed="false">上月</button>
+        <button class="btn small" data-range="90" aria-pressed="false">近 90 天</button>
+        <button class="btn small" data-range="this-year" aria-pressed="false">今年</button>
+        <button class="btn small" data-range="all" aria-pressed="false">全部</button>
         <button class="btn small ghost" id="btn-reset-filter">清除篩選</button>
       </div>
     </div></div>
@@ -507,7 +710,7 @@ body.locked #gate { display: flex; }
       <div class="card-head">
         <h3>明細</h3>
         <span class="hint" id="record-count"></span>
-        <span class="hint" id="readonly-hint" hidden>唯讀：只能新增記錄</span>
+        <span class="hint" id="readonly-hint" hidden>・唯讀，只能新增記錄</span>
         <div class="spacer"></div>
         <button class="btn small" id="btn-export-csv">匯出 CSV</button>
         <button class="btn small" id="btn-import-csv">匯入 CSV</button>
@@ -532,6 +735,9 @@ body.locked #gate { display: flex; }
           </table>
         </div>
         <div class="empty" id="records-empty" hidden>還沒有符合條件的記錄。</div>
+        <div class="more-row" id="records-more" hidden>
+          <button class="btn small" type="button" id="btn-more"></button>
+        </div>
       </div>
     </div>
   </section>
@@ -542,7 +748,7 @@ body.locked #gate { display: flex; }
 <div class="drawer-backdrop" id="drawer-backdrop"></div>
 <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-label="設定">
   <div class="drawer-head">
-    <h2 style="font-size:15px">設定</h2>
+    <h2>設定</h2>
     <div class="spacer" style="flex:1"></div>
     <button class="btn small" id="btn-close-drawer">關閉</button>
   </div>
@@ -574,11 +780,11 @@ body.locked #gate { display: flex; }
       <div id="admin-error" style="display:none;font-size:12px;color:var(--critical);margin:8px 0"></div>
       <form id="admin-create-form" style="margin-top:12px">
         <label class="field" style="margin-bottom:8px">
-          <span>新帳號</span>
+          <span class="field-label">新帳號</span>
           <input type="text" id="admin-new-username" autocomplete="off" required>
         </label>
         <label class="field" style="margin-bottom:8px">
-          <span>新密碼（至少 6 個字元）</span>
+          <span class="field-label">新密碼（至少 6 個字元）</span>
           <input type="text" id="admin-new-password" autocomplete="off" required minlength="6">
         </label>
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">
@@ -591,12 +797,19 @@ body.locked #gate { display: flex; }
     <div class="list-editor" style="margin-bottom:26px">
       <h3>期初零用金</h3>
       <div class="row">
-        <input type="number" id="s-opening" step="0.01" placeholder="0">
-        <span style="font-size:12px;color:var(--text-muted);white-space:nowrap">元</span>
+        <input type="number" id="s-opening" step="0.01" placeholder="0" inputmode="decimal" aria-label="期初零用金">
+        <span class="unit">元</span>
       </div>
-      <div style="font-size:12px;color:var(--text-muted);margin-top:4px">
-        目前餘額 = 期初零用金 + 全部收入 − 全部支出
+      <div class="note">目前餘額 = 期初零用金 + 全部收入 − 全部支出</div>
+    </div>
+
+    <div class="list-editor" style="margin-bottom:26px">
+      <h3>餘額警戒線</h3>
+      <div class="row">
+        <input type="number" id="s-low" min="0" step="1" placeholder="0（不提醒）" inputmode="decimal" aria-label="餘額警戒線">
+        <span class="unit">元</span>
       </div>
+      <div class="note">餘額低於這個數字時，餘額卡會變成提醒色，提醒你申請撥補。填 0 就不提醒。</div>
     </div>
 
     <div class="list-editor" data-list="expenseCategories">
@@ -643,7 +856,7 @@ body.locked #gate { display: flex; }
         <button class="btn small danger" id="btn-clear">清空所有記錄</button>
       </div>
       <div style="font-size:12px;color:var(--text-muted);margin-top:8px">
-        資料只存在這台裝置的瀏覽器（localStorage），換裝置或清除瀏覽器資料前請先匯出備份。
+        帳本存在雲端，這台裝置只留暫存（登出時清掉）。要另外長期保存，請定期匯出備份 JSON。
       </div>
     </div>
   </div>
@@ -651,6 +864,7 @@ body.locked #gate { display: flex; }
 
 <input type="file" id="file-input" accept=".csv,.json,text/csv,application/json" hidden>
 <div id="tip" role="status" aria-live="polite"></div>
+<div id="toasts" aria-live="polite"></div>
 
 <script>
 (() => {
@@ -666,6 +880,7 @@ const DEFAULT_DB = {
   version: 1,
   settings: {
     opening: 0,
+    lowBalance: 0, // 餘額警戒線，0 = 不提醒
     expenseCategories: ['餐飲', '交通', '辦公用品', '郵電費', '交際費', '差旅', '雜項'],
     incomeCategories: ['零用金撥補', '現金收入', '退款', '其他收入'],
     people: ['我'],
@@ -707,9 +922,12 @@ function saveDB(pushRemote = true) {
   try {
     store.set(STORE_KEY, JSON.stringify(db));
   } catch (err) {
-    alert('儲存失敗（瀏覽器儲存空間可能已滿，或目前是無痕視窗）：' + err.message);
+    toast('這台裝置暫存失敗（儲存空間可能已滿，或目前是無痕視窗）：' + err.message, { type: 'error' });
   }
-  if (pushRemote && syncConnected()) syncPush();
+  if (pushRemote && syncConnected()) {
+    if (canEditRecords()) sync.changeSeq++;
+    syncPush();
+  }
 }
 function normalizeRecord(r) {
   if (!r || typeof r !== 'object') return null;
@@ -745,6 +963,36 @@ function monthLabel(key) {
   const [y, m] = key.split('-');
   return `${y.slice(2)}/${m}`;
 }
+/* 操作回饋（toast）：取代大部分 alert，不會打斷操作。
+   action = { label, run } 會多一個按鈕，例如「復原」。 */
+function toast(msg, { type = 'ok', action = null, duration } = {}) {
+  const host = $('#toasts');
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  const icon = document.createElement('span');
+  icon.className = 'icon';
+  const text = document.createElement('span');
+  text.className = 'msg';
+  text.textContent = msg;
+  el.append(icon, text);
+  let timer;
+  const close = () => {
+    clearTimeout(timer);
+    el.classList.add('leaving');
+    setTimeout(() => el.remove(), 200);
+  };
+  if (action) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = action.label;
+    b.addEventListener('click', () => { close(); action.run(); });
+    el.append(b);
+  }
+  host.append(el);
+  // 同時最多留 3 則，舊的先收掉
+  while (host.children.length > 3) host.firstElementChild.remove();
+  timer = setTimeout(close, duration ?? (action ? 8000 : type === 'ok' ? 2800 : 6000));
+}
 function cssVar(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
@@ -758,8 +1006,12 @@ function seriesColors() {
 const filters = { from: '', to: '', type: 'all', category: 'all', person: 'all', payment: 'all', text: '' };
 const sortState = { key: 'date', dir: 'desc' };
 const chartViews = { monthly: 'chart', category: 'chart', person: 'chart', payment: 'chart' };
+// 明細一次先畫這麼多筆，記錄很多時手機也不會一次長出上千張卡片
+const PAGE_SIZE = 60;
+let showLimit = PAGE_SIZE;
 let entryType = 'expense';
 let editingId = null;
+let personTouched = false; // 使用者自己選過記錄人，就不再自動帶入登入帳號
 
 /* ══════════════════════════════════════════════════════════════════════
    篩選與統計
@@ -826,7 +1078,10 @@ function niceTicks(min, max, count = 4) {
   const norm = raw / mag;
   const step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
   const ticks = [];
-  for (let t = Math.floor(min / step) * step; t <= max + step * 0.001; t += step) ticks.push(Math.round(t * 1e6) / 1e6);
+  // 頭尾都要「包住」資料：從 min 往下取整、到 max 往上取整
+  const start = Math.floor(min / step) * step;
+  const end = Math.ceil(max / step) * step;
+  for (let t = start; t <= end + step * 0.001; t += step) ticks.push(Math.round(t * 1e6) / 1e6);
   return ticks;
 }
 
@@ -944,7 +1199,8 @@ function renderMonthly(host, rows) {
   // 只在最後一個月直接標示結餘（選擇性直接標籤）
   if (pts.length) {
     const last = pts[pts.length - 1];
-    const t = svgEl('text', { x: last[0], y: last[1] - 12, 'text-anchor': 'end', fill: cssVar('--text-secondary'), 'font-size': 11, 'font-weight': 600 });
+    const t = svgEl('text', { x: last[0], y: last[1] - 12, 'text-anchor': 'end', fill: cssVar('--text-secondary'), 'font-size': 11, 'font-weight': 600,
+      stroke: surface, 'stroke-width': 3, 'stroke-linejoin': 'round', 'paint-order': 'stroke' });
     t.textContent = money(data[data.length - 1].net);
     svg.append(t);
   }
@@ -958,11 +1214,6 @@ function renderMonthly(host, rows) {
 function renderCategory(host, rows) {
   const expenses = rows.filter(r => r.type === 'expense');
   const all = groupSum(expenses, r => r.category).sort((a, b) => b.value - a.value);
-  const colors = seriesColors();
-  // 顏色跟著「類別」本身，不跟著排名：以設定清單中的位置決定色槽
-  const order = db.settings.expenseCategories;
-  const colorOf = key => colors[(order.indexOf(key) >= 0 ? order.indexOf(key) : hashIndex(key)) % colors.length];
-
   let data = all;
   if (all.length > 6) {
     const head = all.slice(0, 5);
@@ -970,7 +1221,9 @@ function renderCategory(host, rows) {
     data = [...head, { key: '其他', value: sum(rest, d => d.value), rest }];
   }
   const total = sum(data, d => d.value);
-  const paint = data.map((d, i) => d.key === '其他' && all.length > 6 ? cssVar('--text-muted') : colorOf(d.key));
+  const slotOf = categorySlots(data.filter(d => !d.rest).map(d => d.key));
+  const colors = seriesColors();
+  const paint = data.map(d => d.rest ? cssVar('--text-muted') : colors[slotOf.get(d.key)]);
 
   if (chartViews.category === 'table' || !data.length) {
     return renderTableView(host, data.length ? data : null,
@@ -1009,6 +1262,23 @@ function renderCategory(host, rows) {
   host.replaceChildren(svg, legend(data.map((d, i) => [
     `${d.key}　${money(d.value)}（${total ? (d.value / total * 100).toFixed(1) : 0}%）`, paint[i],
   ])));
+}
+/** 顏色跟著「類別」本身，不跟著排名：以設定清單中的位置決定色槽。
+ *  類別比色槽多的時候（例如預設的第 7 個「雜項」），同一張圖裡撞色的
+ *  依清單順序改用下一個還沒用到的色槽，不會出現兩塊一樣顏色。 */
+function categorySlots(keys) {
+  const N = seriesColors().length;
+  const order = db.settings.expenseCategories;
+  const pos = key => (order.indexOf(key) >= 0 ? order.indexOf(key) : order.length + hashIndex(key) % 1000);
+  const used = new Set();
+  const out = new Map();
+  for (const key of [...keys].sort((a, b) => pos(a) - pos(b))) {
+    let slot = pos(key) % N;
+    for (let i = 0; i < N && used.has(slot); i++) slot = (slot + 1) % N;
+    used.add(slot);
+    out.set(key, slot);
+  }
+  return out;
 }
 function hashIndex(str) {
   let h = 0;
@@ -1093,21 +1363,28 @@ function renderTableView(host, data, headers, rowsData, numeric) {
 /* ══════════════════════════════════════════════════════════════════════
    畫面
    ══════════════════════════════════════════════════════════════════════ */
+const WARN_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.2 14.2 13H1.8Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 6.4v3.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="11.3" r=".85" fill="currentColor"/></svg>';
 function renderStats(rows) {
   const income = totalOf(rows, 'income');
   const expense = totalOf(rows, 'expense');
   const net = income - expense;
   const balance = Number(db.settings.opening || 0) + totalOf(db.records, 'income') - totalOf(db.records, 'expense');
+  // 餘額低於警戒線：卡片換成提醒色，並用圖示＋文字說明（不只靠顏色）
+  const low = Number(db.settings.lowBalance || 0);
+  const warn = low > 0 && balance < low;
   const cards = [
-    { k: '目前零用金餘額', v: money(balance), cls: balance < 0 ? 'neg' : '', hero: true, sub: `期初 ${money(db.settings.opening || 0)}（全部記錄）` },
+    { k: '目前零用金餘額', v: money(balance), cls: balance < 0 ? 'neg' : '', hero: true, warn,
+      sub: `期初 ${money(db.settings.opening || 0)}（全部記錄）`,
+      badge: warn ? `低於警戒線 ${money(low)}，記得申請撥補` : '' },
     { k: '期間收入', v: money(income), cls: 'pos' },
     { k: '期間支出', v: money(expense), cls: '' },
     { k: '期間淨額', v: (net >= 0 ? '+' : '−') + money(Math.abs(net)), cls: net >= 0 ? 'pos' : 'neg' },
     { k: '筆數', v: nf.format(rows.length), cls: '' },
   ];
   $('#stats').innerHTML = cards.map(c =>
-    `<div class="card stat${c.hero ? ' hero' : ''}"><div class="k">${c.k}</div>` +
-    `<div class="v ${c.cls}">${c.v}</div>${c.sub ? `<div class="sub">${esc(c.sub)}</div>` : ''}</div>`).join('');
+    `<div class="card stat${c.hero ? ' hero' : ''}${c.warn ? ' warn' : ''}"><div class="k">${c.k}</div>` +
+    `<div class="v ${c.cls}">${c.v}</div>${c.sub ? `<div class="sub">${esc(c.sub)}</div>` : ''}` +
+    (c.badge ? `<div class="badge">${WARN_ICON}${esc(c.badge)}</div>` : '') + '</div>').join('');
 }
 
 function renderCharts(rows) {
@@ -1129,21 +1406,24 @@ function renderTable(rows) {
   });
   const tbody = $('#records tbody');
   const editable = canEditRecords();
-  tbody.innerHTML = sorted.map(r => {
+  const shown = sorted.slice(0, showLimit);
+  const remaining = sorted.length - shown.length;
+  $('#records-more').hidden = remaining <= 0;
+  $('#btn-more').textContent = `顯示更多（還有 ${nf.format(remaining)} 筆）`;
+  tbody.innerHTML = shown.map(r => {
     const sign = r.type === 'income' ? '+' : '−';
-    return `<tr data-id="${r.id}">
-      <td>${esc(r.date)}</td>
-      <td><span class="tag">${r.type === 'income' ? '收入' : '支出'}</span></td>
-      <td>${esc(r.category)}</td>
-      <td>${esc(r.name)}</td>
-      <td>${esc(r.person)}</td>
-      <td class="num ${r.type === 'income' ? 'pos' : ''}">${sign}${money(r.amount)}</td>
-      <td>${esc(r.payment)}</td>
-      <td style="white-space:normal;color:var(--text-muted)">${esc(r.note)}</td>
-      <td style="text-align:right">${editable ? `
-        <button class="btn small ghost" data-act="edit">編輯</button>
-        <button class="btn small ghost danger" data-act="delete">刪除</button>` : ''}
-      </td></tr>`;
+    // id 來自伺服器（員工也能寫入），放進屬性前一定要跳脫
+    return `<tr data-id="${esc(r.id)}">
+      <td class="c-date">${esc(r.date)}</td>
+      <td class="c-type"><span class="tag ${r.type}">${r.type === 'income' ? '收入' : '支出'}</span></td>
+      <td class="c-cat">${esc(r.category)}</td>
+      <td class="c-name">${esc(r.name)}</td>
+      <td class="c-person">${esc(r.person)}</td>
+      <td class="num c-amt ${r.type === 'income' ? 'pos' : ''}">${sign}${money(r.amount)}</td>
+      <td class="c-pay">${esc(r.payment)}</td>
+      <td class="c-note">${esc(r.note)}</td>
+      <td class="c-act">${editable ? '<button class="btn small ghost" data-act="edit">編輯</button>' +
+        '<button class="btn small ghost danger" data-act="delete">刪除</button>' : ''}</td></tr>`;
   }).join('');
   $('#records-empty').hidden = sorted.length > 0;
   $('#records').hidden = sorted.length === 0;
@@ -1169,8 +1449,24 @@ function renderFormSelects() {
   fillSelect($('#f-category'), cats);
   fillSelect($('#f-person'), db.settings.people);
   fillSelect($('#f-payment'), db.settings.payments);
+  // 記錄人清單裡有登入的帳號名稱的話，預設選自己（使用者自己改過就不再動）
+  if (!personTouched && syncConnected() && db.settings.people.includes(sync.username)) {
+    $('#f-person').value = sync.username;
+  }
   $('#t-expense').setAttribute('aria-pressed', String(entryType === 'expense'));
   $('#t-income').setAttribute('aria-pressed', String(entryType === 'income'));
+}
+
+/* 項目名稱自動完成：用過的名稱依使用次數排序 */
+let lastNamesKey = '';
+function renderNameSuggestions() {
+  const freq = new Map();
+  for (const r of db.records) if (r.name) freq.set(r.name, (freq.get(r.name) || 0) + 1);
+  const names = [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 80).map(([n]) => n);
+  const key = names.join('\n');
+  if (key === lastNamesKey) return;
+  lastNamesKey = key;
+  $('#name-suggestions').innerHTML = names.map(n => `<option value="${esc(n)}"></option>`).join('');
 }
 
 function renderFilterSelects() {
@@ -1193,9 +1489,11 @@ function renderFilterSelects() {
 function render() {
   renderFilterSelects();
   renderFormSelects();
+  renderNameSuggestions();
   const rows = filteredRecords();
-  // 一般員工看不到統計與圖表，就不用算
+  // 一般員工看不到篩選、統計與圖表，就不用算
   if (canEditRecords()) {
+    renderQuickRange();
     renderStats(rows);
     renderCharts(rows);
   }
@@ -1213,11 +1511,16 @@ function setEntryType(t) {
 }
 $('#t-expense').addEventListener('click', () => setEntryType('expense'));
 $('#t-income').addEventListener('click', () => setEntryType('income'));
+$('#f-person').addEventListener('change', () => { personTouched = true; });
 
 $('#entry-form').addEventListener('submit', e => {
   e.preventDefault();
   const amount = Number($('#f-amount').value);
-  if (!isFinite(amount) || amount <= 0) { alert('請輸入大於 0 的金額。'); return; }
+  if (!isFinite(amount) || amount <= 0) {
+    toast('請輸入大於 0 的金額。', { type: 'error' });
+    $('#f-amount').focus();
+    return;
+  }
   const rec = {
     id: editingId || uid(),
     date: $('#f-date').value || todayISO(),
@@ -1230,12 +1533,15 @@ $('#entry-form').addEventListener('submit', e => {
     note: $('#f-note').value.trim(),
   };
   if (editingId && !canEditRecords()) exitEditMode();
+  const wasEditing = !!editingId;
   if (editingId) {
     const i = db.records.findIndex(r => r.id === editingId);
     if (i >= 0) db.records[i] = rec;
     exitEditMode();
   } else {
     db.records.push(rec);
+    // 員工的新記錄先標成「待送出」，網路不穩送不出去也不會在重新整理時被蓋掉
+    if (!canEditRecords()) markPending(rec.id);
   }
   saveDB();
   // 保留日期／記錄人／付款方式，方便連續輸入
@@ -1244,6 +1550,8 @@ $('#entry-form').addEventListener('submit', e => {
   $('#f-note').value = '';
   $('#f-name').focus();
   render();
+  const sign = rec.type === 'income' ? '+' : '−';
+  toast(`${wasEditing ? '已更新' : '已新增'}：${rec.name || rec.category}　${sign}${money(rec.amount)}`);
 });
 
 function enterEditMode(rec) {
@@ -1285,12 +1593,27 @@ $('#records tbody').addEventListener('click', e => {
   const id = btn.closest('tr').dataset.id;
   const rec = db.records.find(r => r.id === id);
   if (!rec) return;
-  if (btn.dataset.act === 'edit') enterEditMode(rec);
-  else if (confirm(`確定刪除「${rec.name || rec.category}」${money(rec.amount)} 這筆記錄？`)) {
-    db.records = db.records.filter(r => r.id !== id);
-    if (editingId === id) exitEditMode();
-    saveDB(); render();
-  }
+  if (btn.dataset.act === 'edit') { enterEditMode(rec); return; }
+  // 刪除不再跳確認視窗，改成刪完可以「復原」
+  const index = db.records.indexOf(rec);
+  db.records.splice(index, 1);
+  if (editingId === id) exitEditMode();
+  saveDB(); render();
+  toast(`已刪除「${rec.name || rec.category}」${money(rec.amount)}`, {
+    action: {
+      label: '復原',
+      run: () => {
+        if (!canEditRecords() || db.records.some(r => r.id === rec.id)) return;
+        db.records.splice(Math.min(index, db.records.length), 0, rec);
+        saveDB(); render();
+        toast('已復原這筆記錄');
+      },
+    },
+  });
+});
+$('#btn-more').addEventListener('click', () => {
+  showLimit += PAGE_SIZE * 2;
+  renderTable(filteredRecords());
 });
 $$('#records th.sortable').forEach(th => th.addEventListener('click', () => {
   if (!canEditRecords()) return;
@@ -1304,36 +1627,54 @@ $$('#records th.sortable').forEach(th => th.addEventListener('click', () => {
    篩選互動
    ══════════════════════════════════════════════════════════════════════ */
 const bindFilter = (sel, key, evt = 'change') => $(sel).addEventListener(evt, e => {
-  filters[key] = e.target.value; render();
+  filters[key] = e.target.value; showLimit = PAGE_SIZE; render();
 });
 bindFilter('#q-from', 'from'); bindFilter('#q-to', 'to');
 bindFilter('#q-type', 'type'); bindFilter('#q-category', 'category');
 bindFilter('#q-person', 'person'); bindFilter('#q-payment', 'payment');
-$('#q-text').addEventListener('input', e => { filters.text = e.target.value; render(); });
+// 關鍵字邊打邊篩，稍微等一下再重畫，打字才不會卡
+let textTimer;
+$('#q-text').addEventListener('input', e => {
+  clearTimeout(textTimer);
+  textTimer = setTimeout(() => { filters.text = e.target.value; showLimit = PAGE_SIZE; render(); }, 150);
+});
 
-$$('[data-range]').forEach(b => b.addEventListener('click', () => {
+/** 快捷鍵對應的起訖日期 */
+function rangeFor(r) {
   const now = new Date();
   const iso = d => d.toLocaleDateString('sv-SE');
-  const r = b.dataset.range;
-  if (r === 'all') { filters.from = ''; filters.to = ''; }
-  else if (r === 'this-month') {
-    filters.from = iso(new Date(now.getFullYear(), now.getMonth(), 1));
-    filters.to = iso(new Date(now.getFullYear(), now.getMonth() + 1, 0));
-  } else if (r === 'last-month') {
-    filters.from = iso(new Date(now.getFullYear(), now.getMonth() - 1, 1));
-    filters.to = iso(new Date(now.getFullYear(), now.getMonth(), 0));
-  } else if (r === 'this-year') {
-    filters.from = iso(new Date(now.getFullYear(), 0, 1));
-    filters.to = iso(new Date(now.getFullYear(), 11, 31));
-  } else {
-    const d = new Date(now); d.setDate(d.getDate() - Number(r));
-    filters.from = iso(d); filters.to = iso(now);
+  if (r === 'all') return { from: '', to: '' };
+  if (r === 'this-month') {
+    return { from: iso(new Date(now.getFullYear(), now.getMonth(), 1)),
+             to: iso(new Date(now.getFullYear(), now.getMonth() + 1, 0)) };
   }
+  if (r === 'last-month') {
+    return { from: iso(new Date(now.getFullYear(), now.getMonth() - 1, 1)),
+             to: iso(new Date(now.getFullYear(), now.getMonth(), 0)) };
+  }
+  if (r === 'this-year') {
+    return { from: iso(new Date(now.getFullYear(), 0, 1)), to: iso(new Date(now.getFullYear(), 11, 31)) };
+  }
+  const d = new Date(now); d.setDate(d.getDate() - Number(r));
+  return { from: iso(d), to: iso(now) };
+}
+/** 目前的起訖日期剛好等於哪個快捷鍵，就讓那顆亮起來 */
+function renderQuickRange() {
+  $$('[data-range]').forEach(b => {
+    const { from, to } = rangeFor(b.dataset.range);
+    b.setAttribute('aria-pressed', String(from === filters.from && to === filters.to));
+  });
+}
+$$('[data-range]').forEach(b => b.addEventListener('click', () => {
+  Object.assign(filters, rangeFor(b.dataset.range));
+  showLimit = PAGE_SIZE;
   $('#q-from').value = filters.from;
   $('#q-to').value = filters.to;
   render();
 }));
 function resetFilters() {
+  clearTimeout(textTimer);
+  showLimit = PAGE_SIZE;
   Object.assign(filters, { from: '', to: '', type: 'all', category: 'all', person: 'all', payment: 'all', text: '' });
   $('#q-from').value = ''; $('#q-to').value = ''; $('#q-text').value = '';
 }
@@ -1373,6 +1714,12 @@ $('#s-opening').addEventListener('change', e => {
   db.settings.opening = isFinite(v) ? v : 0;
   saveDB(); render();
 });
+$('#s-low').addEventListener('change', e => {
+  const v = Number(e.target.value);
+  db.settings.lowBalance = isFinite(v) && v > 0 ? v : 0;
+  e.target.value = db.settings.lowBalance || '';
+  saveDB(); render();
+});
 
 /** 這個欄位有多少筆記錄在使用某個值 */
 function usageCount(listKey, value) {
@@ -1393,6 +1740,7 @@ function renameInRecords(listKey, oldName, newName) {
 
 function renderSettings() {
   $('#s-opening').value = db.settings.opening || 0;
+  $('#s-low').value = db.settings.lowBalance || '';
   $$('.list-editor[data-list]').forEach(box => {
     const key = box.dataset.list;
     const list = db.settings[key];
@@ -1422,7 +1770,7 @@ $$('.list-editor[data-list]').forEach(box => {
     if (!newName) { input.value = oldName; return; }
     if (newName === oldName) return;
     if (db.settings[key].some((v, j) => j !== i && v === newName)) {
-      alert(`${label}「${newName}」已存在。`); input.value = oldName; return;
+      toast(`${label}「${newName}」已存在。`, { type: 'error' }); input.value = oldName; return;
     }
     const used = usageCount(key, oldName);
     if (used && !confirm(`有 ${used} 筆記錄使用「${oldName}」，要一起改成「${newName}」嗎？`)) {
@@ -1443,7 +1791,7 @@ $$('.list-editor[data-list]').forEach(box => {
     if (act === 'up' && i > 0) [list[i - 1], list[i]] = [list[i], list[i - 1]];
     else if (act === 'down' && i < list.length - 1) [list[i + 1], list[i]] = [list[i], list[i + 1]];
     else if (act === 'del') {
-      if (list.length === 1) { alert(`至少要保留一個${label}。`); return; }
+      if (list.length === 1) { toast(`至少要保留一個${label}。`, { type: 'error' }); return; }
       const used = usageCount(key, list[i]);
       const msg = used
         ? `有 ${used} 筆記錄使用「${list[i]}」。刪除後這些記錄仍會保留原本的值，只是不再出現在下拉選單。確定刪除？`
@@ -1460,7 +1808,7 @@ $$('.list-editor[data-list]').forEach(box => {
   const doAdd = () => {
     const name = addInput.value.trim();
     if (!name) return;
-    if (db.settings[key].includes(name)) { alert(`${label}「${name}」已存在。`); return; }
+    if (db.settings[key].includes(name)) { toast(`${label}「${name}」已存在。`, { type: 'error' }); return; }
     db.settings[key].push(name);
     addInput.value = '';
     saveDB(); renderSettings(); render();
@@ -1513,12 +1861,12 @@ $('#file-input').addEventListener('change', async e => {
     if (importMode === 'json') importJSON(text);
     else importCSV(text);
   } catch (err) {
-    alert('匯入失敗：' + err.message);
+    toast('匯入失敗：' + err.message, { type: 'error' });
   }
 });
 
 function importJSON(text) {
-  if (!canEditRecords()) { alert('一般使用者不能用備份覆蓋資料，請找管理員。'); return; }
+  if (!canEditRecords()) { toast('一般使用者不能用備份覆蓋資料，請找管理員。', { type: 'error' }); return; }
   const parsed = JSON.parse(text);
   if (!parsed || !Array.isArray(parsed.records)) throw new Error('這不是有效的備份檔。');
   if (!confirm(`即將以備份檔取代目前資料（${parsed.records.length} 筆記錄）。確定？`)) return;
@@ -1526,7 +1874,7 @@ function importJSON(text) {
   Object.assign(db.settings, parsed.settings || {});
   db.records = parsed.records.map(normalizeRecord).filter(Boolean);
   saveDB(); exitEditMode(); render();
-  alert(`已還原 ${db.records.length} 筆記錄。`);
+  toast(`已還原 ${db.records.length} 筆記錄。`);
 }
 
 function parseCSV(text) {
@@ -1550,7 +1898,7 @@ function parseCSV(text) {
 }
 
 function importCSV(text) {
-  if (!canEditRecords()) { alert('一般使用者不能匯入資料，請找管理員。'); return; }
+  if (!canEditRecords()) { toast('一般使用者不能匯入資料，請找管理員。', { type: 'error' }); return; }
   const rows = parseCSV(text);
   if (rows.length < 2) throw new Error('檔案沒有資料列。');
   const header = rows[0].map(h => h.trim());
@@ -1586,16 +1934,17 @@ function importCSV(text) {
     if (r.payment && !db.settings.payments.includes(r.payment)) db.settings.payments.push(r.payment);
   }
   saveDB(); render();
-  alert(`已匯入 ${imported.length} 筆記錄。`);
+  toast(`已匯入 ${imported.length} 筆記錄。`);
 }
 
 $('#btn-clear').addEventListener('click', () => {
-  if (!canEditRecords()) { alert('一般使用者不能清空記錄，請找管理員。'); return; }
-  if (!db.records.length) { alert('目前沒有記錄。'); return; }
+  if (!canEditRecords()) { toast('一般使用者不能清空記錄，請找管理員。', { type: 'error' }); return; }
+  if (!db.records.length) { toast('目前沒有記錄。', { type: 'warn' }); return; }
   if (!confirm(`確定刪除全部 ${db.records.length} 筆記錄？此動作無法復原，建議先匯出備份。`)) return;
   if (!confirm('再確認一次：真的要清空所有記錄嗎？')) return;
   db.records = [];
   saveDB(); exitEditMode(); render();
+  toast('已清空所有記錄。');
 });
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -1611,7 +1960,15 @@ try { localStorage.removeItem('pocket-money-sync-api'); } catch { /* 忽略 */ }
 const SYNC_TOKEN_KEY = 'pocket-money-sync-token';
 const SYNC_USER_KEY = 'pocket-money-sync-user';
 const SYNC_ADMIN_KEY = 'pocket-money-sync-admin';
+const SYNC_PENDING_KEY = 'pocket-money-sync-pending';
 const SYNC_PUSH_DELAY = 800;
+
+function loadPending() {
+  try {
+    const ids = JSON.parse(store.get(SYNC_PENDING_KEY) || '[]');
+    return new Set(Array.isArray(ids) ? ids.filter(id => typeof id === 'string') : []);
+  } catch { return new Set(); }
+}
 
 const sync = {
   token: store.get(SYNC_TOKEN_KEY) || '',
@@ -1620,10 +1977,21 @@ const sync = {
   status: 'offline', // offline | syncing | synced | error
   errorMsg: '',
   pushTimer: null,
-  rev: 0,              // 共用帳本的版本號
-  serverIds: new Set(),// 伺服器上已經有的記錄 id（用來算出「我新增了哪幾筆」）
+  pushChain: Promise.resolve(), // 一次只送一個請求，避免帶著舊版本號同時送出
+  rev: 0,                       // 共用帳本的版本號
+  // 員工新記、還沒確認送到伺服器的記錄 id。存在 localStorage，
+  // 網路不穩送不出去、或重新整理頁面，都會留著等下次補送。
+  pending: loadPending(),
+  // 管理員的變更序號：changeSeq 每改一次就加一，savedSeq 是伺服器已收到的那一次
+  changeSeq: 0,
+  savedSeq: 0,
 };
 function syncConnected() { return !!sync.token; }
+function savePending() { store.setQuiet(SYNC_PENDING_KEY, JSON.stringify([...sync.pending])); }
+function markPending(id) { sync.pending.add(id); savePending(); }
+function isDirty() { return sync.changeSeq !== sync.savedSeq; }
+/** 還有沒送到雲端的東西（員工的新記錄、管理員的變更） */
+function hasUnsynced() { return sync.pending.size > 0 || isDirty(); }
 
 /* 一般員工（已登入、但不是管理員）只能用「新增記錄」卡片記帳：
    明細只能看（不能排序、編輯、刪除），也沒有篩選、統計、圖表、
@@ -1660,7 +2028,8 @@ function persistSyncCreds() {
 }
 function clearSyncCreds() {
   sync.token = ''; sync.username = ''; sync.isAdmin = false;
-  sync.rev = 0; sync.serverIds = new Set();
+  sync.rev = 0; sync.savedSeq = sync.changeSeq;
+  if (sync.pushTimer) { clearTimeout(sync.pushTimer); sync.pushTimer = null; }
   persistSyncCreds();
 }
 
@@ -1681,7 +2050,10 @@ async function syncRequest(path, options = {}) {
   let body = null;
   try { body = await res.json(); } catch { /* 沒有 body（例如 204） */ }
   if (!res.ok) {
-    if (res.status === 401) { clearSyncCreds(); }
+    // 登入失效（過期、密碼被改、帳號被刪）：不管是哪個請求遇到，都回到登入畫面
+    if (res.status === 401 && path !== '/api/login' && sync.token) {
+      sessionEnded('登入已過期，請重新登入。');
+    }
     const err = new Error((body && body.error) || `伺服器錯誤（${res.status}）`);
     err.status = res.status;
     err.body = body;
@@ -1693,19 +2065,43 @@ async function syncRequest(path, options = {}) {
 /* ══════════════════════════════════════════════════════════════════════
    登入前台：沒登入就只看得到登入畫面
    ══════════════════════════════════════════════════════════════════════ */
-function lockApp() {
+function lockApp(prefillUsername = '') {
   document.body.classList.add('locked');
   $('#gate-password').value = '';
-  $('#gate-username').focus();
+  if (prefillUsername) {
+    $('#gate-username').value = prefillUsername;
+    $('#gate-password').focus();
+  } else {
+    $('#gate-username').focus();
+  }
 }
 function unlockApp() {
   document.body.classList.remove('locked');
   $('#gate-error').style.display = 'none';
 }
-function gateShowError(msg) {
+/** kind = 'error'（紅）或 'info'（天空藍，例如「密碼已更新」） */
+function gateShowMessage(msg, kind = 'error') {
   const box = $('#gate-error');
   box.textContent = msg;
-  box.style.display = '';
+  box.classList.toggle('info', kind === 'info');
+  // CSS 預設是 display:none，這裡一定要明確設成 block 才看得到
+  box.style.display = 'block';
+}
+
+/** 登入失效或需要重新登入：鎖回登入畫面，帳號欄先幫忙填好。
+ *  員工還沒送出的記錄會留在這台裝置，重新登入後自動補送。 */
+function sessionEnded(message, kind = 'error') {
+  const username = sync.username;
+  clearSyncCreds();
+  sync.status = 'offline';
+  exitEditMode();
+  resetFilters();
+  closeDrawer();
+  personTouched = false;
+  render();
+  syncRenderUI();
+  lockApp(username);
+  gateShowMessage(message, kind);
 }
 
 $('#gate-form').addEventListener('submit', async e => {
@@ -1722,15 +2118,11 @@ $('#gate-form').addEventListener('submit', async e => {
     syncRenderUI();
     render();
   } catch (err) {
-    gateShowError(err.message);
+    gateShowMessage(err.message);
   } finally {
     btn.disabled = false;
     btn.textContent = '登入';
   }
-});
-
-$('#btn-logout-top').addEventListener('click', () => {
-  if (confirm('確定要登出嗎？')) syncLogout();
 });
 
 /* 帳號一律由管理員建立，前端只有「登入」。 */
@@ -1748,20 +2140,26 @@ async function syncLogin(username, password) {
   sync.token = body.token;
   sync.username = body.username;
   sync.isAdmin = !!body.isAdmin;
+  personTouched = false;
   persistSyncCreds();
   await syncPullAndMerge();
 }
 
-/** 把伺服器回來的共用帳本套用到本機。 */
+/** 把伺服器回來的共用帳本套用到本機。
+ *  員工還沒送上去的新記錄（離線或送出失敗時記的）會接在後面保留，等下次補送。 */
 function applyServerData(body) {
   sync.rev = Number(body.rev) || 0;
   if (body.data && Array.isArray(body.data.records)) {
+    const records = body.data.records.map(normalizeRecord).filter(Boolean);
+    const onServer = new Set(records.map(r => r.id));
+    const waiting = db.records.filter(r => sync.pending.has(r.id) && !onServer.has(r.id));
+    sync.pending = new Set(waiting.map(r => r.id));
+    savePending();
     db = {
       version: 1,
       settings: { ...structuredClone(DEFAULT_DB.settings), ...(body.data.settings || {}) },
-      records: body.data.records.map(normalizeRecord).filter(Boolean),
+      records: [...records, ...waiting],
     };
-    sync.serverIds = new Set(db.records.map(r => r.id));
     store.setQuiet(STORE_KEY, JSON.stringify(db));
   }
   if (editingId && !db.records.some(r => r.id === editingId)) exitEditMode();
@@ -1769,33 +2167,31 @@ function applyServerData(body) {
 }
 
 /** 從伺服器拉共用帳本。帳本還是空的時候，管理員會把目前本機資料當成
- *  第一份上傳上去；員工則單純顯示空帳本。 */
+ *  第一份上傳上去；員工則單純顯示空帳本。拉完之後有待補送的就順便送出。 */
 async function syncPullAndMerge() {
   sync.status = 'syncing'; syncRenderUI();
   try {
     const body = await syncRequest('/api/data', { method: 'GET' });
     if (body.data && Array.isArray(body.data.records)) {
       applyServerData(body);
-      sync.status = 'synced'; sync.errorMsg = '';
     } else {
       sync.rev = Number(body.rev) || 0;
-      sync.serverIds = new Set();
-      if (canEditRecords() && db.records.length) {
-        await syncPush({ immediate: true });
-      } else {
-        sync.status = 'synced'; sync.errorMsg = '';
-      }
+      if (canEditRecords() && db.records.length) sync.changeSeq++;
     }
+    sync.status = 'synced'; sync.errorMsg = '';
+    if (hasUnsynced()) { await syncPush({ immediate: true }); return; }
   } catch (err) {
+    if (!syncConnected()) return; // 登入失效：已經回到登入畫面
     sync.status = 'error'; sync.errorMsg = err.message;
   }
   syncRenderUI();
 }
 
-/** 只在沒有待送變更、也不在同步中的時候，安靜地重新拉一次共用帳本，
- *  讓大家看得到彼此剛記的帳。 */
+/** 只在沒有待送的變更、也不在同步中的時候，安靜地重新拉一次共用帳本，
+ *  讓大家看得到彼此剛記的帳。之前送失敗的變更會先補送。 */
 async function syncRefreshQuiet() {
   if (!syncConnected() || sync.pushTimer || sync.status === 'syncing') return;
+  if (hasUnsynced()) { await syncPush({ immediate: true }); return; }
   try {
     const body = await syncRequest('/api/data', { method: 'GET' });
     if (Number(body.rev) !== sync.rev) applyServerData(body);
@@ -1805,58 +2201,87 @@ async function syncRefreshQuiet() {
 }
 
 /** 送出本機的變更。
- *  一般員工：只追加自己新記的那幾筆（POST /api/records），永遠不會蓋掉別人。
- *  管理員：整份覆寫（PUT /api/data）並帶版本號，版本對不上就重新載入。 */
+ *  一般員工：只追加自己新記、還沒送出的那幾筆（POST /api/records），永遠不會蓋掉別人。
+ *  管理員：整份覆寫（PUT /api/data）並帶版本號，版本對不上就重新載入。
+ *  所有送出都排隊一個一個來，不會同時有兩個請求帶著同一個舊版本號。 */
 function syncPush({ immediate = false, keepalive = false } = {}) {
   if (!syncConnected()) return Promise.resolve();
   if (sync.pushTimer) { clearTimeout(sync.pushTimer); sync.pushTimer = null; }
   const doPush = async () => {
+    if (!syncConnected()) return;
+    const wasError = sync.status === 'error';
     sync.status = 'syncing'; syncRenderUI();
+    let sent = 0;
     try {
       if (canEditRecords()) {
-        const body = await syncRequest('/api/data', {
-          method: 'PUT',
-          keepalive,
-          body: JSON.stringify({ settings: db.settings, records: db.records, baseRev: sync.rev }),
-        });
-        sync.rev = Number(body.rev) || sync.rev;
-        sync.serverIds = new Set(db.records.map(r => r.id));
+        // 這台裝置上如果還留著員工時期沒送出的記錄，它們已經在 db.records 裡，
+        // 跟著這次整份覆寫一起送上去
+        if (isDirty() || sync.pending.size) {
+          const seq = sync.changeSeq;
+          const carried = [...sync.pending];
+          const body = await syncRequest('/api/data', {
+            method: 'PUT',
+            keepalive,
+            body: JSON.stringify({ settings: db.settings, records: db.records, baseRev: sync.rev }),
+          });
+          sync.rev = Number(body.rev) || sync.rev;
+          sync.savedSeq = Math.max(sync.savedSeq, seq);
+          for (const id of carried) sync.pending.delete(id);
+          savePending();
+          sent = carried.length;
+        }
       } else {
-        const added = db.records.filter(r => !sync.serverIds.has(r.id));
+        const added = db.records.filter(r => sync.pending.has(r.id));
         if (added.length) {
           const body = await syncRequest('/api/records', {
             method: 'POST',
             keepalive,
             body: JSON.stringify({ records: added }),
           });
+          for (const r of added) sync.pending.delete(r.id);
+          savePending();
+          sent = added.length;
           applyServerData(body);
         }
       }
       sync.status = 'synced'; sync.errorMsg = '';
+      if (wasError && sent) toast(`連線恢復，已補送 ${sent} 筆記錄。`);
     } catch (err) {
+      if (!syncConnected()) return; // 登入失效：已經回到登入畫面
       if (err.status === 409 && err.body && err.body.data) {
         // 別人先寫進去了：以伺服器的版本為準重新載入，請使用者再操作一次
+        sync.savedSeq = sync.changeSeq;
         applyServerData(err.body);
         sync.status = 'synced'; sync.errorMsg = '';
         syncRenderUI();
-        alert('這份帳本已被其他人更新，畫面已重新載入最新資料。剛剛那個動作請再做一次。');
+        toast('帳本剛被其他人更新，畫面已載入最新資料。剛剛那個動作請再做一次。', { type: 'warn', duration: 9000 });
         return;
       }
       sync.status = 'error'; sync.errorMsg = err.message;
+      // 同一段斷線期間只提醒一次，之後由頂端的狀態標籤顯示
+      if (!wasError) {
+        if (err.status) toast('同步失敗：' + err.message, { type: 'error' });
+        else toast('連不上伺服器，變更先留在這台裝置，恢復連線後會自動補送。', { type: 'warn' });
+      }
     }
     syncRenderUI();
   };
-  if (immediate) return doPush();
+  const run = () => (sync.pushChain = sync.pushChain.then(doPush).catch(err => console.warn('同步失敗', err)));
+  if (immediate) return run();
   return new Promise(resolve => {
-    sync.pushTimer = setTimeout(() => doPush().then(resolve), SYNC_PUSH_DELAY);
+    sync.pushTimer = setTimeout(() => {
+      sync.pushTimer = null;
+      run().then(resolve);
+    }, SYNC_PUSH_DELAY);
   });
 }
 
-async function syncLogout() {
-  // 還沒送出的變更先送完，再讓伺服器作廢這個 session
-  if (sync.pushTimer) await syncPush({ immediate: true });
+/** 登出：作廢 session，清掉這台裝置上的帳本與待送資料。 */
+function syncLogout() {
   syncRequest('/api/logout', { method: 'POST' }).catch(() => { /* 伺服器端 session 過期也沒關係 */ });
   clearSyncCreds();
+  sync.pending = new Set();
+  savePending();
   sync.status = 'offline';
   // 登出後不留資料在這台裝置：共用帳本在雲端，下次登入會重新拉下來
   db = structuredClone(DEFAULT_DB);
@@ -1864,35 +2289,64 @@ async function syncLogout() {
   exitEditMode();
   resetFilters();
   closeDrawer();
+  personTouched = false;
   render();
   syncRenderUI();
   lockApp();
 }
 
+/** 按下登出：先把還沒送出的變更送完；真的送不出去就讓使用者決定要不要放棄。 */
+async function requestLogout() {
+  if (!confirm('確定要登出嗎？登出後這台裝置不會留下帳本資料，下次登入會從雲端重新載入。')) return;
+  if (sync.pushTimer || hasUnsynced()) await syncPush({ immediate: true });
+  if (!syncConnected()) return; // 送的時候發現登入已失效，已經回到登入畫面
+  if (hasUnsynced()) {
+    const what = sync.pending.size ? `還有 ${sync.pending.size} 筆記錄` : '還有變更';
+    if (!confirm(`${what}沒送到雲端（可能是網路不穩）。現在登出，這些內容會遺失。確定要登出？`)) return;
+  }
+  syncLogout();
+}
+$('#btn-logout-top').addEventListener('click', requestLogout);
+
+/** 目前同步狀態的文字與燈號 */
+function syncState() {
+  if (!syncConnected()) return { state: 'offline', label: '未登入' };
+  if (sync.status === 'syncing') return { state: 'syncing', label: '同步中' };
+  if (sync.status === 'error') {
+    if (sync.pending.size) return { state: 'pending', label: `${sync.pending.size} 筆待同步` };
+    if (isDirty()) return { state: 'pending', label: '變更待同步' };
+    return { state: 'error', label: '同步失敗' };
+  }
+  return { state: 'synced', label: '已同步' };
+}
+
 function syncRenderUI() {
   const connected = syncConnected();
+  const { state, label } = syncState();
   $('#sync-connected').hidden = !connected;
   if (connected) {
     $('#sync-username-display').textContent = sync.username;
     $('#sync-role-line').textContent = sync.isAdmin ? '身分：管理員（可管理帳號）' : '身分：一般使用者';
     const line = $('#sync-status-line');
-    if (sync.status === 'syncing') line.textContent = '同步中…';
-    else if (sync.status === 'error') line.textContent = '同步失敗：' + sync.errorMsg;
-    else line.textContent = '已同步';
-    line.style.color = sync.status === 'error' ? 'var(--critical)' : 'var(--text-muted)';
+    line.textContent = state === 'error' || state === 'pending' ? `${label}：${sync.errorMsg}` : label;
+    line.style.color = state === 'error' ? 'var(--critical)' : state === 'pending' ? 'var(--warning-text)' : 'var(--text-muted)';
   }
+  const who = $('#who');
+  who.hidden = !connected;
+  who.textContent = connected ? sync.username + (sync.isAdmin ? '・管理員' : '') : '';
   adminRenderBox();
   applyRecordPermissions();
   syncRenderTopbarPill();
 }
 function syncRenderTopbarPill() {
   const pill = $('#sync-pill');
-  // 沒登入過就不顯示這個標籤
-  if (!syncConnected() && !sync.username) { pill.hidden = true; return; }
+  if (!syncConnected()) { pill.hidden = true; return; }
+  const { state, label } = syncState();
   pill.hidden = false;
-  const label = { syncing: '同步中', synced: '已同步', error: '同步失敗', offline: '未登入' }[sync.status] || '未登入';
-  pill.textContent = (syncConnected() && sync.status !== 'error' ? '☁ ' : '⚠ ') + label;
-  pill.title = syncConnected() ? ('雲端同步：已登入 ' + sync.username) : '雲端同步：尚未登入';
+  pill.dataset.state = state;
+  $('.txt', pill).textContent = label;
+  pill.title = '雲端同步：' + label + (sync.errorMsg && state !== 'synced' && state !== 'syncing' ? `（${sync.errorMsg}）` : '');
+  pill.setAttribute('aria-label', '雲端同步狀態：' + label);
 }
 $('#sync-pill').addEventListener('click', openDrawer);
 
@@ -1984,13 +2438,13 @@ function adminRenderUsers(users) {
 async function adminChangePassword(u, isSelf) {
   const pw = prompt(`幫「${u.username}」設定新密碼（至少 6 個字元）：`);
   if (pw === null) return;
-  if (pw.length < 6) { alert('密碼至少 6 個字元。'); return; }
+  if (pw.length < 6) { toast('密碼至少 6 個字元。', { type: 'error' }); return; }
   try {
     await syncRequest(`/api/users/${u.id}`, { method: 'PATCH', body: JSON.stringify({ password: pw }) });
     adminShowError('');
-    // 改密碼會讓該帳號所有裝置重新登入；改到自己就直接登出
-    if (isSelf) { clearSyncCreds(); sync.status = 'offline'; syncRenderUI(); alert('密碼已更新，請用新密碼重新登入。'); return; }
-    alert(`「${u.username}」的密碼已更新，該帳號需要重新登入。`);
+    // 改密碼會讓該帳號所有裝置重新登入；改到自己就回到登入畫面
+    if (isSelf) { sessionEnded('密碼已更新，請用新密碼重新登入。', 'info'); return; }
+    toast(`「${u.username}」的密碼已更新，該帳號需要重新登入。`);
     adminLoadUsers();
   } catch (err) {
     adminShowError(err.message);
@@ -2033,6 +2487,7 @@ $('#admin-create-form').addEventListener('submit', async e => {
     adminShowError('');
     $('#admin-new-username').value = '';
     $('#admin-new-password').value = '';
+    toast(`已建立帳號「${username}」。`);
     adminLoadUsers();
   } catch (err) {
     adminShowError(err.message);
@@ -2042,9 +2497,7 @@ $('#admin-create-form').addEventListener('submit', async e => {
   }
 });
 
-$('#btn-sync-logout').addEventListener('click', () => {
-  if (confirm('登出後這台裝置會停止跟雲端同步，本機資料仍會保留。確定登出？')) syncLogout();
-});
+$('#btn-sync-logout').addEventListener('click', requestLogout);
 
 /** 跟伺服器確認目前身分（管理員權限可能被別的管理員改掉了）。 */
 async function syncRefreshRole() {
@@ -2057,8 +2510,8 @@ async function syncRefreshRole() {
     syncRenderUI();
     return true;
   } catch (err) {
-    // 401 時 syncRequest 已經清掉憑證：回到登入畫面
-    if (!syncConnected()) { lockApp(); gateShowError('登入已過期，請重新登入。'); return false; }
+    // 401 時 syncRequest 已經清掉憑證並回到登入畫面
+    if (!syncConnected()) return false;
     // 只是連不上伺服器的話維持現狀，同步流程會再處理
     sync.status = 'error'; sync.errorMsg = err.message;
     syncRenderUI();
@@ -2066,9 +2519,9 @@ async function syncRefreshRole() {
   }
 }
 
-/* 有變更還在 800ms 的 debounce 裡就關掉分頁的話，這裡補送一次。 */
+/* 有變更還在 800ms 的 debounce 裡（或之前送失敗）就關掉分頁的話，這裡補送一次。 */
 function syncFlushPending() {
-  if (sync.pushTimer && syncConnected()) syncPush({ immediate: true, keepalive: true });
+  if (syncConnected() && (sync.pushTimer || hasUnsynced())) syncPush({ immediate: true, keepalive: true });
 }
 addEventListener('pagehide', syncFlushPending);
 document.addEventListener('visibilitychange', () => {
@@ -2076,6 +2529,8 @@ document.addEventListener('visibilitychange', () => {
   else syncRefreshQuiet();
 });
 addEventListener('focus', syncRefreshQuiet);
+// 網路恢復時馬上補送／重新拉一次
+addEventListener('online', syncRefreshQuiet);
 // 帳本是大家共用的，開著不動也每分鐘看一次有沒有人記了新的帳
 setInterval(() => {
   if (document.visibilityState === 'visible') syncRefreshQuiet();

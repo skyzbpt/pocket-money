@@ -150,6 +150,8 @@ t('員工不能用追加改掉既有記錄',
   (await (await call('POST', '/api/records', { token: staff.token, body: { records: [rec('r1', 99999)] } })).json())
     .data.records.find(r => r.id === 'r1').amount, 100);
 
+t('員工追加的記錄 id 不能夾帶 HTML',
+  (await call('POST', '/api/records', { token: staff.token, body: { records: [rec('"><img src=x onerror=alert(1)>', 1)] } })).status, 400);
 // 版本檢查：管理員拿舊的 baseRev 覆寫會被擋下
 const stale = await call('PUT', '/api/data', {
   token: boss2.token, body: { settings: {}, records: [rec('r1', 100)], baseRev: 0 },
@@ -172,6 +174,9 @@ t('刪除後只剩一筆',
 await call('DELETE', '/api/users/2', { token: boss2.token });
 t('刪帳號後帳本還在',
   (await (await call('GET', '/api/data', { token: boss2.token })).json()).data.records.length, 1);
+
+t('追加 uuid 格式的 id 可以',
+  (await call('POST', '/api/records', { token: boss2.token, body: { records: [rec('0f8fad5b-d9cb-469f-a165-70867728950e', 1)] } })).status, 200);
 
 console.log(fail === 0 ? '\n全部通過' : `\n${fail} 項失敗`);
 process.exit(fail === 0 ? 0 : 1);
