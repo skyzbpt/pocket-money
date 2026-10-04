@@ -36,3 +36,10 @@ if (/id="sync-tab-register"/.test(html)) {
   process.exit(1);
 }
 console.log('PASS  前端沒有公開註冊入口');
+
+// 明細的 data-id 來自伺服器（員工也能寫入），放進 HTML 屬性前一定要跳脫
+if (!/data-id="\$\{esc\(r\.id\)\}"/.test(m[1])) {
+  console.error('FAIL  明細列的 data-id 沒有用 esc() 跳脫');
+  process.exit(1);
+}
+console.log('PASS  明細列 id 有跳脫');

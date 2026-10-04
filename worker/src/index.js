@@ -326,6 +326,12 @@ function validRecord(r) {
     && isFinite(Number(r.amount));
 }
 
+/** 員工追加的新記錄，id 只能是前端產生的那種（uuid 或英數字），
+ *  避免有人塞進奇怪字元，再顯示到管理員的畫面上。 */
+function isPlainId(id) {
+  return typeof id === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(id);
+}
+
 async function handleGetData(env, request) {
   const user = await getUserFromRequest(env, request);
   if (!user) return json({ error: '請先登入。' }, 401, env, request);
@@ -342,7 +348,7 @@ async function handleAppendRecords(env, request) {
   if (!body || !Array.isArray(body.records) || !body.records.length) {
     return json({ error: '沒有要新增的記錄。' }, 400, env, request);
   }
-  if (!body.records.every(validRecord)) {
+  if (!body.records.every(r => validRecord(r) && isPlainId(r.id))) {
     return json({ error: '記錄格式不正確。' }, 400, env, request);
   }
   const shared = await readShared(env);
