@@ -1594,7 +1594,8 @@ $('#records tbody').addEventListener('click', e => {
   const rec = db.records.find(r => r.id === id);
   if (!rec) return;
   if (btn.dataset.act === 'edit') { enterEditMode(rec); return; }
-  // 刪除不再跳確認視窗，改成刪完可以「復原」
+  // 刪除前先確認；刪完提示裡還有「復原」可以救回來
+  if (!confirm(`確定刪除「${rec.name || rec.category}」${money(rec.amount)} 這筆記錄？`)) return;
   const index = db.records.indexOf(rec);
   db.records.splice(index, 1);
   if (editingId === id) exitEditMode();
